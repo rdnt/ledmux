@@ -7,35 +7,32 @@ import (
     "./ambilight"
 )
 
-const IP = ""
-const port = 4197
-const count = 75
-
 func main() {
 
     // Create the Ambilight object
     var amb = ambilight.Init(
-        IP,
-        port,
-        count,
+        "",
+        4197,
+        75,
     )
-
+    fmt.Println("Initializing server...")
+    // Try to re-establish socket connection
     for {
-        fmt.Println("Listening for Ambilight connection requests on port 4197...")
-        // Connect to remote server
+        // Establish connection to the local socket
         conn, listener, err := amb.Listen()
         if err != nil {
             fmt.Println(err)
             time.Sleep(1 * time.Second)
+            // Keep trying to connect
             continue
         }
-        // Receive data
+        // Receive data indefinitely
         for {
             fmt.Println("Receiving data...")
-            //err := amb.Send(conn, data)
             data, err := amb.Receive(conn)
             if err != nil {
                 fmt.Println("Failed to receive data.")
+                // Disconnect the listener
                 err := amb.DisconnectListener(listener)
                 if err != nil {
                     fmt.Println("Connection could not be closed.")
@@ -44,40 +41,15 @@ func main() {
                 fmt.Println("Connection closed.")
                 break
             }
-
-            fmt.Printf("%X\n", data)
-
-
-
+            // Data handler function
+            Handle(data)
         }
         // Try to reconnect every second
         time.Sleep(1 * time.Second)
+        fmt.Println("Re-trying...")
     }
-    //
-    // fmt.Println("Listening for Ambilight data on port 4197...")
-    //
-    // // listen on all interfaces
-    // listener, err := net.Listen("tcp", ":4197")
-    // if err != nil {
-    //     fmt.Println(err)
-    // }
-    //
-    // // accept connection on port
-    // conn, err := listener.Accept()
-    // if err != nil {
-    //     fmt.Println(err)
-    // }
-    //
-    // // run loop forever (or until ctrl-c)
-    // for {
-    //     // Create a buffer the size of the led count * 3 (for RGB bytes)
-    //     buffer := make([]uint8, count * 3)
-    //     input := bufio.NewReader(conn)
-    //     _, err := io.ReadFull(input, buffer)
-    //     if err != nil {
-    //         fmt.Println(err)
-    //     }
-    //     // output message received
-    //     fmt.Printf("%X\n", buffer)
-    // }
+}
+
+func Handle(data []byte) {
+    fmt.Printf("%X\n", data)
 }

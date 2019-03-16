@@ -30,7 +30,7 @@ func (amb Ambilight) Connect() net.Conn {
     for {
         conn, err := net.Dial("tcp", address)
         if err != nil {
-            fmt.Println("Retrying...")
+            fmt.Println("Connection failed, retrying...")
             time.Sleep(1 * time.Second)
         } else {
             fmt.Println("Connection established.")
@@ -58,6 +58,7 @@ func (amb Ambilight) Listen() (net.Conn, net.Listener, error) {
     if err != nil {
         return nil, nil, err
     }
+    fmt.Printf("Listening on port %d...\n", amb.Port)
     // Accept incoming connections
     conn, err := listener.Accept()
     if err != nil {
