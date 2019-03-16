@@ -6,8 +6,8 @@ import (
     "time"
     "sync"
     "./ambilight"
-    //"image"
-    "github.com/cretz/go-scrap"
+    "image"
+    "github.com/vova616/screenshot"
 )
 
 func main() {
@@ -26,7 +26,7 @@ func main() {
 
 
         // Capture every approximately 1/30th of a second (30fps)
-        ticker := time.NewTicker(100 * time.Millisecond)
+        ticker := time.NewTicker(33 * time.Millisecond)
 
         stop := make(chan struct{})
 
@@ -65,61 +65,25 @@ func main() {
     }
 }
 
-func AcquireImage() (*scrap.FrameImage, error) {
-    d, err := scrap.PrimaryDisplay()
-	if err != nil {
-        fmt.Printf("1")
-		return nil, err
-	}
-	// Create capturer for it
-	c, err := scrap.NewCapturer(d)
-	if err != nil {
-        fmt.Printf("2")
-		return nil, err
-	}
-    for {
-		if img, _, err := c.FrameImage(); img != nil || err != nil {
-			// Detach the image so it's safe to use after this method
-            //time.Sleep(1000 * time.Millisecond)
-			if img != nil {
-				img.Detach()
-			}
-			return img, err
-		}
-		// Sleep 17ms (~1/60th of a second)
-		time.Sleep(100 * time.Millisecond)
-	}
-}
-
 
 func captureBounds(count int) []uint8 {
 	// Get main display's bounds
-    var wg sync.WaitGroup
 	//bounds := screenshot.GetDisplayBounds(0)
+    var img image.Image
+    var err error
 
-    img, err := AcquireImage()
-    if err != nil {
-        panic(err)
-    }
+    var wg sync.WaitGroup
+    wg.Add(1)
 
-	// Get an image, trying until one available
-	//for {
+    go func() {
+        img, err = screenshot.CaptureScreen()
+        if err != nil {
+    		panic(err)
+    	}
+        wg.Done()
+    }()
 
-        // img, _, err := c.FrameImage();
-        // if img != nil {
-        //     img.Detach()
-        // }
-        // fmt.Printf("3")
-        // fmt.Printf(">>> %+v <<<\n", img)
-        // if err != nil {
-        //     fmt.Printf("4")
-        //     return []uint8{}, err
-        // }
-		// Sleep 17ms (~1/60th of a second)
-		//time.Sleep(17 * time.Millisecond)
-	//}
-
-
+    wg.Wait()
 
 
     // Capture a screenshot
@@ -131,7 +95,7 @@ func captureBounds(count int) []uint8 {
     // Two horizontal two vertical, 3 colors (3 bytes) for each pixel
     data := make([]uint8, width * 3 * 2 + height * 3 * 2)
     // Create a wait group and add the four routines
-    wg.Add(2)
+    wg.Add(4)
     // Initialize RGB values
 	var r, g, b uint32
     // Capture all the top edge pixel data
@@ -163,27 +127,27 @@ func captureBounds(count int) []uint8 {
     	}
     }()
     // Bottom
-    // go func() {
-    //     defer wg.Done()
-    //     offset := width * 3 + height * 3
-    //     for x := width - 1; x >= 0; x-- {
-    // 		r, g, b, _ = img.At(width - x, height - 1).RGBA()
-    //         data[offset + x * 3] = uint8(r)
-    //         data[offset + x * 3 + 1] = uint8(g)
-    //         data[offset + x * 3 + 2] = uint8(b)
-    // 	}
-    // }()
-    // // Left
-    // go func() {
-    //     defer wg.Done()
-    //     offset := width * 3 * 2 + height * 3
-    //     for y := 0; y < height; y++ {
-    // 		r, g, b, _ = img.At(0, height - y).RGBA()
-    //         data[offset + y * 3] = uint8(r)
-    //         data[offset + y * 3 + 1] = uint8(g)
-    //         data[offset + y * 3 + 2] = uint8(b)
-    // 	}
-    // }()
+    go func() {
+        defer wg.Done()
+        offset := width * 3 + height * 3
+        for x := width - 1; x >= 0; x-- {
+    		r, g, b, _ = img.At(width - x, height - 1).RGBA()
+            data[offset + x * 3] = uint8(r)
+            data[offset + x * 3 + 1] = uint8(g)
+            data[offset + x * 3 + 2] = uint8(b)
+    	}
+    }()
+    // Left
+    go func() {
+        defer wg.Done()
+        offset := width * 3 * 2 + height * 3
+        for y := 0; y < height; y++ {
+    		r, g, b, _ = img.At(0, height - y).RGBA()
+            data[offset + y * 3] = uint8(r)
+            data[offset + y * 3 + 1] = uint8(g)
+            data[offset + y * 3 + 2] = uint8(b)
+    	}
+    }()
     // Wait until all routines are complete
     wg.Wait()
     // Lets get the approximate segment size in bytes for each of the pixels
