@@ -1,1 +1,1 @@
-# Ambilight-Client-Server
+# Ambilight-Controller
