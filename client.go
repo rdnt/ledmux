@@ -18,8 +18,7 @@ func main() {
         84,
     )
     fmt.Println("Initializing client...")
-
-
+    // Get primary display
     d, err := scrap.PrimaryDisplay()
 	if err != nil {
         panic(err)
@@ -31,39 +30,25 @@ func main() {
         panic(err)
 		return
 	}
-    fmt.Printf("%+v", c)
-
     // Try to reconnect if connection is closed
     for {
         // Connect to remote server
         conn := amb.Connect()
-        // Send data indefinitely
 
-
-        // Capture every approximately 1/30th of a second (30fps)
-
-
-        stop := make(chan struct{})
-
-
-        go func() {
-
-            ticker := time.NewTicker(16 * time.Millisecond)
-
-            defer ticker.Stop()
-
-            for range ticker.C {
+        // Create a channel so that we can stop if an error occurs
+        //stop := make(chan struct{})
+        //go func() {
+            // loop
+            for {
                 // Get the color data averages for each led
                 // Grab a frame capture once one is ready (max ~ 60 per second)
-                img, err := AcquireImage(c)
-                if err != nil {
-                    panic(err)
-                }
+                img := AcquireImage(c)
+                // Get width and height of the display
                 width, height := GetDisplayResolution(c)
-
+                // Get the LED data from the borders of the captured image
                 data := CaptureBounds(img, width, height, amb.Count)
                 // Send the color data to the server
-                err = amb.Send(conn, data)
+                err := amb.Send(conn, data)
                 if err != nil {
                     fmt.Println("Transmission failed.")
                     // Close the connection
@@ -73,100 +58,71 @@ func main() {
                         os.Exit(3)
                     }
                     fmt.Println("Connection closed.")
-                    // Break and try to re-establish connection
-                    //return
-                    close(stop)
-
+                    // Error occured, stop and try to re-establish connection
+                    //close(stop)
+                    break
                 }
-
-                // stop
             }
-        }()
-
-        <-stop
-
+        //}()
+        // Will be reached once an error occurs while running the capture
+        //<-stop
         // Try to reconnect every second (let's not flood the server shall we)
         time.Sleep(1 * time.Second)
         fmt.Println("Re-trying to connect...")
     }
 }
 
-func AcquireImage(c *scrap.Capturer) (*scrap.FrameImage, error) {
-
+func AcquireImage(c *scrap.Capturer) (*scrap.FrameImage) {
+    // Initialize a new waitgroup
     var wg sync.WaitGroup
-
     wg.Add(1)
-
+    // Initialize image object
     var img *scrap.FrameImage
     var err error
-
+    // Get an image once it is available, trying once every ~1/60th of a second
     go func() {
-
+        // Release waitgroup once done
         defer wg.Done()
-
+        // Start a new ticker
         ticker := time.NewTicker(16 * time.Millisecond)
-
+        // Stop the ticker once the routine is complete
         defer ticker.Stop()
-
+        // Repeat
         for range ticker.C {
+            // Try to capture
             img, _, err = c.FrameImage();
-            // Detach the image so it's safe to use after this method
             if img != nil || err != nil {
+                // Image is available
                 if img != nil {
+                    // Detach the image so it's safe to use after this method
                     img.Detach()
+                    // Break the loop
                     break
                 }
-
             }
         }
     }()
-
+    // Wait until an image is ready
     wg.Wait()
-
-    return img, err
-
+    // Dispatch the image
+    return img
 }
 
 func GetDisplayResolution(c *scrap.Capturer) (width int, height int) {
+    // Get width and height from capturer
     width = c.Width()
     height = c.Height()
+    // Return them
     return width, height
 }
 
 func CaptureBounds(img *scrap.FrameImage, width int, height int, count int) []uint8 {
-	// Get main display's bounds
+	// Initialize new waitgroup
     var wg sync.WaitGroup
-	//bounds := screenshot.GetDisplayBounds(0)
-
-
-
-	// Get an image, trying until one available
-	//for {
-
-        // img, _, err := c.FrameImage();
-        // if img != nil {
-        //     img.Detach()
-        // }
-        // fmt.Printf("3")
-        // fmt.Printf(">>> %+v <<<\n", img)
-        // if err != nil {
-        //     fmt.Printf("4")
-        //     return []uint8{}, err
-        // }
-		// Sleep 17ms (~1/60th of a second)
-		//time.Sleep(17 * time.Millisecond)
-	//}
-
-
-
-    // Capture a screenshot
-	//img, err := screenshot.CaptureScreen(bounds)
-
-	// Get width and height in pixels
+    wg.Add(4)
     // Two horizontal two vertical, 3 colors (3 bytes) for each pixel
     data := make([]uint8, width * 3 * 2 + height * 3 * 2)
     // Create a wait group and add the four routines
-    wg.Add(4)
     // Initialize RGB values
 	var r, g, b uint32
     // Capture all the top edge pixel data
@@ -221,7 +177,6 @@ func CaptureBounds(img *scrap.FrameImage, width int, height int, count int) []ui
     }()
     // Wait until all routines are complete
     wg.Wait()
-
     // Lets get the approximate segment size in bytes for each of the pixels
     segment_size := int((width * 3 * 2 + height * 3 * 2) / count)
     // We want the actual pixels to be divisible by 3 (3 bytes = rgb for 1 pixel)
