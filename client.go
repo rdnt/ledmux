@@ -59,7 +59,9 @@ func main() {
                 if err != nil {
                     panic(err)
                 }
-                data := captureBounds(img, amb.Count)
+                width, height := GetDisplayResolution(c)
+
+                data := CaptureBounds(img, width, height, amb.Count)
                 // Send the color data to the server
                 err = amb.Send(conn, data)
                 if err != nil {
@@ -131,7 +133,7 @@ func GetDisplayResolution(c *scrap.Capturer) (width int, height int) {
     return width, height
 }
 
-func captureBounds(img *scrap.FrameImage, count int) []uint8 {
+func CaptureBounds(img *scrap.FrameImage, width int, height int, count int) []uint8 {
 	// Get main display's bounds
     var wg sync.WaitGroup
 	//bounds := screenshot.GetDisplayBounds(0)
@@ -161,8 +163,6 @@ func captureBounds(img *scrap.FrameImage, count int) []uint8 {
 	//img, err := screenshot.CaptureScreen(bounds)
 
 	// Get width and height in pixels
-	width := 1920
-	height := 1080
     // Two horizontal two vertical, 3 colors (3 bytes) for each pixel
     data := make([]uint8, width * 3 * 2 + height * 3 * 2)
     // Create a wait group and add the four routines
