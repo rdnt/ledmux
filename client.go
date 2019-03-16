@@ -18,6 +18,20 @@ func main() {
         84,
     )
     fmt.Println("Initializing client...")
+
+
+    d, err := scrap.PrimaryDisplay()
+	if err != nil {
+        panic(err)
+		return
+	}
+	// Create capturer for it
+	c, err := scrap.NewCapturer(d)
+    if err != nil {
+        panic(err)
+		return
+	}
+
     // Try to reconnect if connection is closed
     for {
         // Connect to remote server
@@ -26,7 +40,7 @@ func main() {
 
 
         // Capture every approximately 1/30th of a second (30fps)
-        ticker := time.NewTicker(100 * time.Millisecond)
+        ticker := time.NewTicker(16 * time.Millisecond)
 
         stop := make(chan struct{})
 
@@ -34,9 +48,14 @@ func main() {
         go func() {
             for range ticker.C {
                 // Get the color data averages for each led
-                data := captureBounds(amb.Count)
+                // Grab a frame capture once one is ready (max ~ 60 per second)
+                img, err := AcquireImage(c)
+                if err != nil {
+                    panic(err)
+                }
+                data := captureBounds(img, amb.Count)
                 // Send the color data to the server
-                err := amb.Send(conn, data)
+                err = amb.Send(conn, data)
                 if err != nil {
                     fmt.Println("Transmission failed.")
                     // Close the connection
@@ -65,42 +84,52 @@ func main() {
     }
 }
 
-func AcquireImage() (*scrap.FrameImage, error) {
-    d, err := scrap.PrimaryDisplay()
-	if err != nil {
-        fmt.Printf("1")
-		return nil, err
-	}
-	// Create capturer for it
-	c, err := scrap.NewCapturer(d)
-	if err != nil {
-        fmt.Printf("2")
-		return nil, err
-	}
-    for {
-		if img, _, err := c.FrameImage(); img != nil || err != nil {
-			// Detach the image so it's safe to use after this method
-            //time.Sleep(1000 * time.Millisecond)
-			if img != nil {
-				img.Detach()
-			}
-			return img, err
-		}
-		// Sleep 17ms (~1/60th of a second)
-		time.Sleep(100 * time.Millisecond)
-	}
+func AcquireImage(c *scrap.Capturer) (*scrap.FrameImage, error) {
+
+    var wg sync.WaitGroup
+
+    wg.Add(1)
+
+    var img *scrap.FrameImage
+    var err error
+
+    go func() {
+
+        defer wg.Done()
+
+        ticker := time.NewTicker(16 * time.Millisecond)
+
+        defer ticker.Stop()
+
+
+
+        for range ticker.C {
+            img, _, err = c.FrameImage();
+            // Detach the image so it's safe to use after this method
+            if img != nil || err != nil {
+                if img != nil {
+                    img.Detach()
+                    break
+                }
+
+            }
+        }
+    }()
+
+    wg.Wait()
+
+    return img, err
+    //<-stop
+
 }
 
 
-func captureBounds(count int) []uint8 {
+func captureBounds(img *scrap.FrameImage, count int) []uint8 {
 	// Get main display's bounds
     var wg sync.WaitGroup
 	//bounds := screenshot.GetDisplayBounds(0)
 
-    img, err := AcquireImage()
-    if err != nil {
-        panic(err)
-    }
+
 
 	// Get an image, trying until one available
 	//for {
@@ -121,7 +150,6 @@ func captureBounds(count int) []uint8 {
 
 
 
-
     // Capture a screenshot
 	//img, err := screenshot.CaptureScreen(bounds)
 
@@ -131,7 +159,7 @@ func captureBounds(count int) []uint8 {
     // Two horizontal two vertical, 3 colors (3 bytes) for each pixel
     data := make([]uint8, width * 3 * 2 + height * 3 * 2)
     // Create a wait group and add the four routines
-    wg.Add(2)
+    wg.Add(4)
     // Initialize RGB values
 	var r, g, b uint32
     // Capture all the top edge pixel data
@@ -163,29 +191,30 @@ func captureBounds(count int) []uint8 {
     	}
     }()
     // Bottom
-    // go func() {
-    //     defer wg.Done()
-    //     offset := width * 3 + height * 3
-    //     for x := width - 1; x >= 0; x-- {
-    // 		r, g, b, _ = img.At(width - x, height - 1).RGBA()
-    //         data[offset + x * 3] = uint8(r)
-    //         data[offset + x * 3 + 1] = uint8(g)
-    //         data[offset + x * 3 + 2] = uint8(b)
-    // 	}
-    // }()
-    // // Left
-    // go func() {
-    //     defer wg.Done()
-    //     offset := width * 3 * 2 + height * 3
-    //     for y := 0; y < height; y++ {
-    // 		r, g, b, _ = img.At(0, height - y).RGBA()
-    //         data[offset + y * 3] = uint8(r)
-    //         data[offset + y * 3 + 1] = uint8(g)
-    //         data[offset + y * 3 + 2] = uint8(b)
-    // 	}
-    // }()
+    go func() {
+        defer wg.Done()
+        offset := width * 3 + height * 3
+        for x := 0; x < width; x++ {
+    		r, g, b, _ = img.At(x, height - 1).RGBA()
+            data[offset + x * 3] = uint8(r)
+            data[offset + x * 3 + 1] = uint8(g)
+            data[offset + x * 3 + 2] = uint8(b)
+    	}
+    }()
+    // Left
+    go func() {
+        defer wg.Done()
+        offset := width * 3 * 2 + height * 3
+        for y := 0; y < height; y++ {
+    		r, g, b, _ = img.At(0, y).RGBA()
+            data[offset + y * 3] = uint8(r)
+            data[offset + y * 3 + 1] = uint8(g)
+            data[offset + y * 3 + 2] = uint8(b)
+    	}
+    }()
     // Wait until all routines are complete
     wg.Wait()
+
     // Lets get the approximate segment size in bytes for each of the pixels
     segment_size := int((width * 3 * 2 + height * 3 * 2) / count)
     // We want the actual pixels to be divisible by 3 (3 bytes = rgb for 1 pixel)
