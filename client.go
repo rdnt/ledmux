@@ -31,6 +31,7 @@ func main() {
         panic(err)
 		return
 	}
+    fmt.Printf("%+v", c)
 
     // Try to reconnect if connection is closed
     for {
@@ -40,12 +41,17 @@ func main() {
 
 
         // Capture every approximately 1/30th of a second (30fps)
-        ticker := time.NewTicker(16 * time.Millisecond)
+
 
         stop := make(chan struct{})
 
 
         go func() {
+
+            ticker := time.NewTicker(16 * time.Millisecond)
+
+            defer ticker.Stop()
+
             for range ticker.C {
                 // Get the color data averages for each led
                 // Grab a frame capture once one is ready (max ~ 60 per second)
@@ -77,7 +83,6 @@ func main() {
 
         <-stop
 
-        //ticker.Stop()
         // Try to reconnect every second (let's not flood the server shall we)
         time.Sleep(1 * time.Second)
         fmt.Println("Re-trying to connect...")
@@ -101,8 +106,6 @@ func AcquireImage(c *scrap.Capturer) (*scrap.FrameImage, error) {
 
         defer ticker.Stop()
 
-
-
         for range ticker.C {
             img, _, err = c.FrameImage();
             // Detach the image so it's safe to use after this method
@@ -119,10 +122,14 @@ func AcquireImage(c *scrap.Capturer) (*scrap.FrameImage, error) {
     wg.Wait()
 
     return img, err
-    //<-stop
 
 }
 
+func GetDisplayResolution(c *scrap.Capturer) (width int, height int) {
+    width = c.Width()
+    height = c.Height()
+    return width, height
+}
 
 func captureBounds(img *scrap.FrameImage, count int) []uint8 {
 	// Get main display's bounds
