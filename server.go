@@ -5,6 +5,7 @@ import (
     "os"
     "time"
     "./ambilight"
+	"github.com/jgarff/rpi_ws281x/golang/ws2811"
 )
 
 func main() {
@@ -13,8 +14,16 @@ func main() {
     var amb = ambilight.Init(
         "",
         4197,
-        75,
+        84,
     )
+
+	defer ws2811.Fini()
+	err := ws2811.Init(18, amb.Count, 255)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
     fmt.Println("Initializing server...")
     // Try to re-establish socket connection
     for {
@@ -28,7 +37,7 @@ func main() {
         }
         // Receive data indefinitely
         for {
-            fmt.Println("Receiving data...")
+            //fmt.Println("Receiving data...")
             data, err := amb.Receive(conn)
             if err != nil {
                 fmt.Println("Failed to receive data.")
@@ -42,7 +51,7 @@ func main() {
                 break
             }
             // Data handler function
-            Handle(data)
+            Handle(data, amb.Count)
         }
         // Try to reconnect every second
         time.Sleep(1 * time.Second)
@@ -50,6 +59,25 @@ func main() {
     }
 }
 
-func Handle(data []byte) {
-    fmt.Printf("%X\n", data)
+func Handle(data []byte, count int) {
+    //fmt.Printf("%X\n", data)
+
+
+
+	var r, g, b uint8
+	var color uint32
+
+	for i := 0; i < count; i++ {
+
+		offset := (i + 24) % count
+		r = uint8(data[i * 3])
+		g = uint8(data[i * 3 + 1])
+		b = uint8(data[i * 3 + 2]) // GRB
+		color = uint32(0xFF)<<24 | uint32(g)<<16 | uint32(r) <<8 | uint32(b)
+		ws2811.SetLed(offset, color)
+	}
+	err := ws2811.Render()
+	if err != nil {
+		fmt.Println(err)
+	}
 }

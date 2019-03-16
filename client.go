@@ -12,9 +12,9 @@ import (
 func main() {
     // Create the Ambilight object
     var amb = ambilight.Init(
-        "127.0.0.1",
+        "192.168.1.101",
         4197,
-        75,
+        84,
     )
     fmt.Println("Initializing client...")
     // Try to reconnect if connection is closed
@@ -40,7 +40,7 @@ func main() {
                 break
             }
             // Sleep approximately 1/30th of a second
-            time.Sleep(30 * time.Millisecond)
+            time.Sleep(100 * time.Millisecond)
         }
         // Try to reconnect every second (let's not flood the server shall we)
         time.Sleep(1 * time.Second)
@@ -81,6 +81,7 @@ func captureBounds(count int) []uint8 {
             data[x * 3 + 2] = uint8(b)
     	}
     }()
+    // Right
     go func() {
         defer wg.Done()
         // Offset is 3 times the width of the display,
@@ -93,6 +94,7 @@ func captureBounds(count int) []uint8 {
             data[offset + y * 3 + 2] = uint8(b)
     	}
     }()
+    // Bottom
     go func() {
         defer wg.Done()
         offset := width * 3 + height * 3
@@ -103,11 +105,12 @@ func captureBounds(count int) []uint8 {
             data[offset + x * 3 + 2] = uint8(b)
     	}
     }()
+    // Left
     go func() {
         defer wg.Done()
         offset := width * 3 * 2 + height * 3
-        for y := height - 1; y >= 0; y-- {
-    		r, g, b, _ = img.At(0, y).RGBA()
+        for y := 0; y < height; y++ {
+    		r, g, b, _ = img.At(0, height - y).RGBA()
             data[offset + y * 3] = uint8(r)
             data[offset + y * 3 + 1] = uint8(g)
             data[offset + y * 3 + 2] = uint8(b)
@@ -128,7 +131,7 @@ func captureBounds(count int) []uint8 {
         // Loop all pixels in the current segment
         for j := 0; j < pixels_per_segment; j ++ {
             // Calculate the offset (based on current segment)
-            offset := pixels_per_segment * i
+            offset := segment_size * i
             // Add the casted color integer to the last value
             r += int(data[offset + j * 3]);
             g += int(data[offset + j * 3 + 1]);

@@ -80,7 +80,6 @@ func (amb Ambilight) Receive(conn net.Conn) ([]byte, error) {
     return buffer, nil
 }
 
-
 func (amb Ambilight) DisconnectListener(listener net.Listener) error {
     err := listener.Close()
     return err
