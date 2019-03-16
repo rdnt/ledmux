@@ -34,38 +34,32 @@ func main() {
     for {
         // Connect to remote server
         conn := amb.Connect()
-
-        // Create a channel so that we can stop if an error occurs
-        //stop := make(chan struct{})
-        //go func() {
-            // loop
-            for {
-                // Get the color data averages for each led
-                // Grab a frame capture once one is ready (max ~ 60 per second)
-                img := AcquireImage(c)
-                // Get width and height of the display
-                width, height := GetDisplayResolution(c)
-                // Get the LED data from the borders of the captured image
-                data := CaptureBounds(img, width, height, amb.Count)
-                // Send the color data to the server
-                err := amb.Send(conn, data)
+        // Screen capture and send data once we have an image, loop until
+        // There is an error during transmission
+        for {
+            // Get the color data averages for each led
+            // Grab a frame capture once one is ready (max ~ 60 per second)
+            img := AcquireImage(c)
+            // Get width and height of the display
+            width, height := GetDisplayResolution(c)
+            // Get the LED data from the borders of the captured image
+            data := CaptureBounds(img, width, height, amb.Count)
+            // Send the color data to the server
+            err := amb.Send(conn, data)
+            if err != nil {
+                fmt.Println("Transmission failed.")
+                // Close the connection
+                err := amb.Disconnect(conn)
                 if err != nil {
-                    fmt.Println("Transmission failed.")
-                    // Close the connection
-                    err := amb.Disconnect(conn)
-                    if err != nil {
-                        fmt.Println("Connection could not be closed.")
-                        os.Exit(3)
-                    }
-                    fmt.Println("Connection closed.")
-                    // Error occured, stop and try to re-establish connection
-                    //close(stop)
-                    break
+                    fmt.Println("Connection could not be closed.")
+                    os.Exit(3)
                 }
+                fmt.Println("Connection closed.")
+                // Error occured, stop and try to re-establish connection
+                //close(stop)
+                break
             }
-        //}()
-        // Will be reached once an error occurs while running the capture
-        //<-stop
+        }
         // Try to reconnect every second (let's not flood the server shall we)
         time.Sleep(1 * time.Second)
         fmt.Println("Re-trying to connect...")
