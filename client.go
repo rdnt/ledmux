@@ -15,8 +15,8 @@ func main() {
     // Get all arguments except for program
     args := os.Args[1:]
     // Make sure we get exactly 3 arguments
-    if len(args) != 3 {
-        fmt.Println("Usage: ./client [ip] [port] [led_count]")
+    if len(args) != 4 {
+        fmt.Println("Usage: ./client [ip] [port] [led_count] [framerate]")
         return
     }
     // Validate destination IP address
@@ -36,7 +36,13 @@ func main() {
     // Validate leds count (should be the same with controller)
     led_count, err := strconv.ParseUint(args[2], 10, 16)
     if err != nil || led_count == 0 {
-        fmt.Println(args[1], ": Invalid LED count. (1 - 65535)")
+        fmt.Println(args[2], ": Invalid LED count. (1 - 65535)")
+        return
+    }
+    // Validate capturing frames per second
+    framerate, err := strconv.ParseUint(args[3], 10, 8)
+    if err != nil || framerate == 0 || framerate > 144 {
+        fmt.Println(args[3], ": Invalid framerate. (1 - 144)")
         return
     }
     // Create the Ambilight object

@@ -19,19 +19,19 @@ func main() {
     // Validate controller port is in allowed range (1024 - 65535)
     port, err := strconv.ParseUint(args[0], 10, 16)
     if err != nil || port < 1024 {
-        fmt.Println(args[1], ": Port out of range. (1024 - 65535)")
+        fmt.Println(args[0], ": Port out of range. (1024 - 65535)")
         return
     }
     // Validate PWM pin number to send the led data to
     pin, err := strconv.ParseUint(args[1], 10, 6)
     if err != nil || pin != 12 || pin != 13 || pin != 18 || pin != 19 {
-        fmt.Println(pin, ": Invalid hardware PWM pin: (12 / 13 / 18 / 19)")
+        fmt.Println(args[1], ": Invalid hardware PWM pin: (12 / 13 / 18 / 19)")
         return
     }
     // Validate leds count
     led_count, err := strconv.ParseUint(args[2], 10, 16)
     if err != nil || led_count == 0 {
-        fmt.Println(args[1], ": Invalid LED count. (1 - 65535)")
+        fmt.Println(args[2], ": Invalid LED count. (1 - 65535)")
         return
     }
     // Validate brightness is in allowed range (0 - 255)
