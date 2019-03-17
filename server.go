@@ -10,6 +10,12 @@ import (
 
 func main() {
 
+    args := os.Args[1:]
+    if len(args) != 4 {
+        fmt.Println("Usage: ./server [port] [pin] [count] [brightness]")
+        return
+    }
+
     // Create the Ambilight object
     var amb = ambilight.Init(
         "",
@@ -70,6 +76,7 @@ func Handle(data []byte, count int) {
 	for i := 0; i < count; i++ {
 
 		offset := (i + 24) % count
+
 		r = uint8(data[i * 3])
 		g = uint8(data[i * 3 + 1])
 		b = uint8(data[i * 3 + 2]) // GRB
