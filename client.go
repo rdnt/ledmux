@@ -73,7 +73,7 @@ func main() {
         for {
             // Get the color data averages for each led
             // Grab a frame capture once one is ready (max ~ 60 per second)
-            img := AcquireImage(c)
+            img := AcquireImage(c, int(framerate))
             // Get width and height of the display
             width, height := GetDisplayResolution(c)
             // Get the LED data from the borders of the captured image
@@ -100,7 +100,7 @@ func main() {
     }
 }
 
-func AcquireImage(c *scrap.Capturer) (*scrap.FrameImage) {
+func AcquireImage(c *scrap.Capturer, framerate int) (*scrap.FrameImage) {
     // Initialize a new waitgroup
     var wg sync.WaitGroup
     wg.Add(1)
@@ -112,7 +112,7 @@ func AcquireImage(c *scrap.Capturer) (*scrap.FrameImage) {
         // Release waitgroup once done
         defer wg.Done()
         // Start a new ticker
-        ticker := time.NewTicker(17 * time.Millisecond)
+        ticker := time.NewTicker(time.Duration(1000 / framerate) * time.Millisecond)
         // Stop the ticker once the routine is complete
         defer ticker.Stop()
         // Repeat
