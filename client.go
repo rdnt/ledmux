@@ -78,7 +78,7 @@ func AcquireImage(c *scrap.Capturer) (*scrap.FrameImage) {
         // Release waitgroup once done
         defer wg.Done()
         // Start a new ticker
-        ticker := time.NewTicker(16 * time.Millisecond)
+        ticker := time.NewTicker(17 * time.Millisecond)
         // Stop the ticker once the routine is complete
         defer ticker.Stop()
         // Repeat
@@ -152,7 +152,7 @@ func CaptureBounds(img *scrap.FrameImage, width int, height int, count int) []ui
         defer wg.Done()
         offset := width * 3 + height * 3
         for x := 0; x < width; x++ {
-    		r, g, b, _ = img.At(x, height - 1).RGBA()
+    		r, g, b, _ = img.At(width - x - 1, height - 1).RGBA()
             data[offset + x * 3] = uint8(r)
             data[offset + x * 3 + 1] = uint8(g)
             data[offset + x * 3 + 2] = uint8(b)
@@ -163,7 +163,7 @@ func CaptureBounds(img *scrap.FrameImage, width int, height int, count int) []ui
         defer wg.Done()
         offset := width * 3 * 2 + height * 3
         for y := 0; y < height; y++ {
-    		r, g, b, _ = img.At(0, y).RGBA()
+    		r, g, b, _ = img.At(0, height - y - 1).RGBA()
             data[offset + y * 3] = uint8(r)
             data[offset + y * 3 + 1] = uint8(g)
             data[offset + y * 3 + 2] = uint8(b)
@@ -184,17 +184,21 @@ func CaptureBounds(img *scrap.FrameImage, width int, height int, count int) []ui
         // Loop all pixels in the current segment
         for j := 0; j < pixels_per_segment; j ++ {
             // Calculate the offset (based on current segment)
-            offset := segment_size * i
+            offset := pixels_per_segment * 3 * i
             // Add the casted color integer to the last value
-            r += int(data[offset + j * 3]);
-            g += int(data[offset + j * 3 + 1]);
-            b += int(data[offset + j * 3 + 2]);
+            // r += int(data[offset + j * 3]);
+            // g += int(data[offset + j * 3 + 1]);
+            // b += int(data[offset + j * 3 + 2]);
+            r = int(data[offset + j * 3]);
+            g = int(data[offset + j * 3 + 1]);
+            b = int(data[offset + j * 3 + 2]);
         }
         // Get the average by dividing the accumulated color value with the
         // count of the pixels in the segment
-        r = r / pixels_per_segment
-        g = g / pixels_per_segment
-        b = b / pixels_per_segment
+        // r = r / pixels_per_segment
+        // g = g / pixels_per_segment
+        // b = b / pixels_per_segment
+
         // Modify the correct bytes on the LED data
         led_data[i * 3] = uint8(r)
         led_data[i * 3 + 1] = uint8(g)
