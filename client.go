@@ -186,18 +186,18 @@ func CaptureBounds(img *scrap.FrameImage, width int, height int, count int) []ui
             // Calculate the offset (based on current segment)
             offset := pixels_per_segment * 3 * i
             // Add the casted color integer to the last value
-            // r += int(data[offset + j * 3]);
-            // g += int(data[offset + j * 3 + 1]);
-            // b += int(data[offset + j * 3 + 2]);
-            r = int(data[offset + j * 3]);
-            g = int(data[offset + j * 3 + 1]);
-            b = int(data[offset + j * 3 + 2]);
+            r += int(data[offset + j * 3]);
+            g += int(data[offset + j * 3 + 1]);
+            b += int(data[offset + j * 3 + 2]);
+            // r = int(data[offset + j * 3]);
+            // g = int(data[offset + j * 3 + 1]);
+            // b = int(data[offset + j * 3 + 2]);
         }
         // Get the average by dividing the accumulated color value with the
         // count of the pixels in the segment
-        // r = r / pixels_per_segment
-        // g = g / pixels_per_segment
-        // b = b / pixels_per_segment
+        r = r / pixels_per_segment
+        g = g / pixels_per_segment
+        b = b / pixels_per_segment
 
         // Modify the correct bytes on the LED data
         led_data[i * 3] = uint8(r)
