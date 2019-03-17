@@ -9,20 +9,43 @@ import (
 )
 
 func main() {
-
+    // Get all arguments except for program
     args := os.Args[1:]
+    // Make sure we get exactly 4 arguments
     if len(args) != 4 {
-        fmt.Println("Usage: ./server [port] [pin] [count] [brightness]")
+        fmt.Println("Usage: ./server [port] [pin] [led_count] [brightness]")
         return
     }
-
+    // Validate controller port is in allowed range (1024 - 65535)
+    port, err := strconv.ParseUint(args[0], 10, 16)
+    if err != nil || port < 1024 {
+        fmt.Println(args[1], ": Port out of range. (1024 - 65535)")
+        return
+    }
+    // Validate PWM pin number to send the led data to
+    pin, err := strconv.ParseUint(args[1], 10, 6)
+    if err != nil || pin != 12 || pin != 13 || pin != 18 || pin != 19 {
+        fmt.Println(pin, ": Invalid hardware PWM pin: (12 / 13 / 18 / 19)")
+        return
+    }
+    // Validate leds count
+    led_count, err := strconv.ParseUint(args[2], 10, 16)
+    if err != nil || led_count == 0 {
+        fmt.Println(args[1], ": Invalid LED count. (1 - 65535)")
+        return
+    }
+    // Validate brightness is in allowed range (0 - 255)
+    brightness, err := strconv.ParseUint(args[3], 10, 8)
+    if err != nil {
+        fmt.Println("Brightness: 0 - 255", brightness)
+        return
+    }
     // Create the Ambilight object
     var amb = ambilight.Init(
         "",
-        4197,
-        84,
+        port,
+        led_count,
     )
-
 	defer ws2811.Fini()
 	err := ws2811.Init(18, amb.Count, 255)
 	if err != nil {

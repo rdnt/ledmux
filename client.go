@@ -6,16 +6,44 @@ import (
     "time"
     "sync"
     "./ambilight"
-    //"image"
     "github.com/cretz/go-scrap"
+    "strconv"
+    "net"
 )
 
 func main() {
+    // Get all arguments except for program
+    args := os.Args[1:]
+    // Make sure we get exactly 3 arguments
+    if len(args) != 3 {
+        fmt.Println("Usage: ./client [ip] [port] [led_count]")
+        return
+    }
+    // Validate destination IP address
+    ip := net.ParseIP(args[0])
+    if ip.To4() == nil {
+        fmt.Println(args[0], ": Not a valid IPv4 address.")
+        return
+    }
+    // Parse IP as a string
+    destination_ip := ip.String()
+    // Validate destination port is in allowed range (1024 - 65535)
+    port, err := strconv.ParseUint(args[1], 10, 16)
+    if err != nil || port < 1024 {
+        fmt.Println(args[1], ": Port out of range. (1024 - 65535)")
+        return
+    }
+    // Validate leds count (should be the same with controller)
+    led_count, err := strconv.ParseUint(args[2], 10, 16)
+    if err != nil || led_count == 0 {
+        fmt.Println(args[1], ": Invalid LED count. (1 - 65535)")
+        return
+    }
     // Create the Ambilight object
     var amb = ambilight.Init(
-        "192.168.1.101",
-        4197,
-        84,
+        destination_ip,
+        port,
+        led_count,
     )
     fmt.Println("Initializing client...")
     // Get primary display
@@ -43,7 +71,7 @@ func main() {
             // Get width and height of the display
             width, height := GetDisplayResolution(c)
             // Get the LED data from the borders of the captured image
-            data := CaptureBounds(img, width, height, amb.Count)
+            data := CaptureBounds(img, width, height, int(amb.Count))
             // Send the color data to the server
             err := amb.Send(conn, data)
             if err != nil {
