@@ -11,11 +11,11 @@ import (
 type Ambilight struct {
     conn net.Conn
     IP string
-    Port uint64
-    Count uint64
+    Port int
+    Count int
 }
 
-func Init(IP string, port uint64, count uint64) *Ambilight {
+func Init(IP string, port int, count int) *Ambilight {
     amb := new(Ambilight)
     amb.IP = IP
     amb.Port = port

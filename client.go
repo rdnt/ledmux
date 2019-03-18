@@ -1,14 +1,14 @@
 package main
 
 import (
+    "net"
     "fmt"
     "os"
     "time"
     "sync"
+    "strconv"
     "./ambilight"
     "github.com/cretz/go-scrap"
-    "strconv"
-    "net"
 )
 
 func main() {
@@ -25,29 +25,27 @@ func main() {
         fmt.Println(args[0], ": Not a valid IPv4 address.")
         return
     }
-    // Parse IP as a string
-    destination_ip := ip.String()
     // Validate destination port is in allowed range (1024 - 65535)
-    port, err := strconv.ParseUint(args[1], 10, 16)
-    if err != nil || port < 1024 {
+    port, err := strconv.Atoi(args[1])
+    if err != nil || port < 1024 || port > 65535 {
         fmt.Println(args[1], ": Port out of range. (1024 - 65535)")
         return
     }
     // Validate leds count (should be the same with controller)
-    led_count, err := strconv.ParseUint(args[2], 10, 16)
-    if err != nil || led_count == 0 {
+    led_count, err := strconv.Atoi(args[2])
+    if err != nil || led_count < 1 || led_count > 65535 {
         fmt.Println(args[2], ": Invalid LED count. (1 - 65535)")
         return
     }
     // Validate capturing frames per second
-    framerate, err := strconv.ParseUint(args[3], 10, 8)
-    if err != nil || framerate == 0 || framerate > 144 {
+    framerate, err := strconv.Atoi(args[3])
+    if err != nil || framerate < 1 || framerate > 144 {
         fmt.Println(args[3], ": Invalid framerate. (1 - 144)")
         return
     }
     // Create the Ambilight object
     var amb = ambilight.Init(
-        destination_ip,
+        ip.String(),
         port,
         led_count,
     )

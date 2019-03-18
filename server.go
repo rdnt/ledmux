@@ -4,6 +4,7 @@ import (
     "fmt"
     "os"
     "time"
+    "strconv"
     "./ambilight"
 	"github.com/jgarff/rpi_ws281x/golang/ws2811"
 )
@@ -17,27 +18,27 @@ func main() {
         return
     }
     // Validate controller port is in allowed range (1024 - 65535)
-    port, err := strconv.ParseUint(args[0], 10, 16)
-    if err != nil || port < 1024 {
+    port, err := strconv.Atoi(args[0])
+    if err != nil || port < 1024 || port > 65535 {
         fmt.Println(args[0], ": Port out of range. (1024 - 65535)")
         return
     }
     // Validate PWM pin number to send the led data to
-    pin, err := strconv.ParseUint(args[1], 10, 6)
-    if err != nil || pin != 12 || pin != 13 || pin != 18 || pin != 19 {
+    pin, err := strconv.Atoi(args[1])
+    if err != nil || !(pin == 12 || pin == 13 || pin == 18 || pin == 19) {
         fmt.Println(args[1], ": Invalid hardware PWM pin: (12 / 13 / 18 / 19)")
         return
     }
     // Validate leds count
-    led_count, err := strconv.ParseUint(args[2], 10, 16)
-    if err != nil || led_count == 0 {
+    led_count, err := strconv.Atoi(args[2])
+    if err != nil || led_count < 1 || led_count > 65535 {
         fmt.Println(args[2], ": Invalid LED count. (1 - 65535)")
         return
     }
     // Validate brightness is in allowed range (0 - 255)
-    brightness, err := strconv.ParseUint(args[3], 10, 8)
-    if err != nil {
-        fmt.Println("Brightness: 0 - 255", brightness)
+    brightness, err := strconv.Atoi(args[3])
+    if err != nil || brightness < 1 || brightness > 255 {
+        fmt.Println(args[3], ": Invalid Brightness. (1 - 255)", brightness)
         return
     }
     // Create the Ambilight object
@@ -46,13 +47,18 @@ func main() {
         port,
         led_count,
     )
+    // Clear the leds when connection dies and reset state
+    defer ws2811.Clear()
 	defer ws2811.Fini()
-	err := ws2811.Init(18, amb.Count, 255)
+    // Initialize the leds
+	err = ws2811.Init(pin, amb.Count, brightness)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
+    // Clear in case they were already on due to error
+	ws2811.Clear()
+    // Initialize
     fmt.Println("Initializing server...")
     // Try to re-establish socket connection
     for {
@@ -77,6 +83,8 @@ func main() {
                     os.Exit(2)
                 }
                 fmt.Println("Connection closed.")
+                // Connection lost, clear the leds
+                ws2811.Clear()
                 break
             }
             // Data handler function
