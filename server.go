@@ -56,8 +56,8 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-    // Clear in case they were already on due to error
-	ws2811.Clear()
+    // Reset in case they were already on due to error
+    Reset()
     // Initialize
     fmt.Println("Initializing server...")
     // Try to re-establish socket connection
@@ -83,8 +83,8 @@ func main() {
                     os.Exit(2)
                 }
                 fmt.Println("Connection closed.")
-                // Connection lost, clear the leds
-                ws2811.Clear()
+                // Connection lost, reset the leds
+                Reset()
                 break
             }
             // Data handler function
@@ -117,5 +117,14 @@ func Handle(data []byte, count int) {
 	err := ws2811.Render()
 	if err != nil {
 		fmt.Println(err)
+	}
+}
+
+func Reset() {
+    ws2811.Clear()
+	err := ws2811.Render()
+	if err != nil {
+		fmt.Println("Error while resetting the LEDs.")
+        os.Exit(1)
 	}
 }
