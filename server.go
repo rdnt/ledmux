@@ -121,7 +121,7 @@ func Handle(data []byte, count int) {
     // Parse operation mode and remove the byte from the data
     mode, data := parseMode(data)
     // If mode is valid, execute it
-    if mode == "R" {
+    if mode == "A" {
         Render(data, count)
     } else {
         fmt.Println("Invalid mode supplied.")

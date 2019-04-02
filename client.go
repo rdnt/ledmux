@@ -236,7 +236,7 @@ func CaptureBounds(img *scrap.FrameImage, width int, height int, count int) []ui
         led_data[i * 3 + 2] = uint8(g)
         led_data[i * 3 + 3] = uint8(b)
     }
-    mode := 'R'
+    mode := 'A'
     led_data[0] = uint8(mode)
     // Return the LED data
     return led_data
