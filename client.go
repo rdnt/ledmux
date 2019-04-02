@@ -49,7 +49,7 @@ func main() {
         port,
         led_count,
     )
-    fmt.Println("Initializing client...")
+    fmt.Println("Trying to connect to Ambilight server...")
     // Get primary display
     d, err := scrap.PrimaryDisplay()
 	if err != nil {
@@ -70,7 +70,7 @@ func main() {
         // There is an error during transmission
         for {
             // Get the color data averages for each led
-            // Grab a frame capture once one is ready (max ~ 60 per second)
+            // Grab a frame capture once one is ready (max ~ 60 frames per second)
             img := AcquireImage(c, int(framerate))
             // Get width and height of the display
             width, height := GetDisplayResolution(c)
@@ -79,22 +79,21 @@ func main() {
             // Send the color data to the server
             err := amb.Send(conn, data)
             if err != nil {
-                fmt.Println("Transmission failed.")
                 // Close the connection
                 err := amb.Disconnect(conn)
                 if err != nil {
                     fmt.Println("Connection could not be closed.")
+                    fmt.Println("Exiting.")
                     os.Exit(3)
                 }
-                fmt.Println("Connection closed.")
                 // Error occured, stop and try to re-establish connection
-                //close(stop)
+                fmt.Println("Connection closed.")
+                fmt.Println("Retrying...")
                 break
             }
         }
         // Try to reconnect every second (let's not flood the server shall we)
         time.Sleep(1 * time.Second)
-        fmt.Println("Re-trying to connect...")
     }
 }
 
@@ -207,8 +206,8 @@ func CaptureBounds(img *scrap.FrameImage, width int, height int, count int) []ui
     segment_size := int((width * 3 * 2 + height * 3 * 2) / count)
     // We want the actual pixels to be divisible by 3 (3 bytes = rgb for 1 pixel)
     pixels_per_segment := segment_size / 3
-    // Initialize the leds color data
-    led_data := make([]uint8, count * 3)
+    // Initialize the leds color data + 1 byte for the mode
+    led_data := make([]uint8, count * 3 + 1)
     // Loop for LED count
     for i := 0; i < count; i++ {
         // Initialize the color values to zero
@@ -232,10 +231,13 @@ func CaptureBounds(img *scrap.FrameImage, width int, height int, count int) []ui
         b = b / pixels_per_segment
 
         // Modify the correct bytes on the LED data
-        led_data[i * 3] = uint8(r)
-        led_data[i * 3 + 1] = uint8(g)
-        led_data[i * 3 + 2] = uint8(b)
+        // Leaving the first byte untouched
+        led_data[i * 3 + 1] = uint8(r)
+        led_data[i * 3 + 2] = uint8(g)
+        led_data[i * 3 + 3] = uint8(b)
     }
+    mode := 'R'
+    led_data[0] = uint8(mode)
     // Return the LED data
     return led_data
 }

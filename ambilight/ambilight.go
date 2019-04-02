@@ -30,7 +30,6 @@ func (amb Ambilight) Connect() net.Conn {
     for {
         conn, err := net.Dial("tcp", address)
         if err != nil {
-            fmt.Println("Connection failed, retrying...")
             time.Sleep(1 * time.Second)
         } else {
             fmt.Println("Connection established.")
@@ -64,12 +63,14 @@ func (amb Ambilight) Listen() (net.Conn, net.Listener, error) {
     if err != nil {
         return nil, listener, err
     }
+    fmt.Printf("Incoming connection from %s.\n", conn.RemoteAddr())
     return conn, listener, nil
 }
 
 func (amb Ambilight) Receive(conn net.Conn) ([]byte, error) {
     // Allocate buffer to store the incoming data
-    buffer := make([]uint8, amb.Count * 3)
+	// One more byte for the mode char
+    buffer := make([]uint8, amb.Count * 3 + 1)
     // Read the data
     input := bufio.NewReader(conn)
     _, err := io.ReadFull(input, buffer)
