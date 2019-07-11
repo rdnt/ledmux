@@ -22,7 +22,7 @@ The project is currently under development. Features may be missing, will genera
 
 ## How it works
 
-The client is launched on a Windows / Mac / Linux PC and the server on a controller (e.g. Raspberry Pi) that is wired with the LED strip that will be controlled.
+The client is launched on a Windows / Mac / Linux PC and the server on a controller (e.g. Raspberry Pi) that is wired with the LED strip that will be controlled. Arduino-like microcontrollers will in theory work, though the server would need to be rewritten in C, as Golang on them is not supported due to their limited memory (Golang is garbage collected and includes a runtime so it's not a good fit for microcontrollers)
 
 Once the server is running on the controller, whenever the client is launched it will try to connect with the command-line parameters provided.
 
