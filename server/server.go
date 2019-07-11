@@ -3,8 +3,8 @@ package main
 import (
 	"../ambilight"
 	"fmt"
-	//"github.com/jgarff/rpi_ws281x/golang/ws2811"
-	"../ws2811"
+	"github.com/jgarff/rpi_ws281x/golang/ws2811"
+	//"../ws2811"
 	"os"
 	"strconv"
 	"time"
