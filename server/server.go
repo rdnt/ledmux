@@ -2,9 +2,8 @@ package main
 
 import (
 	"../ambilight"
+	"../ws2811"
 	"fmt"
-	"github.com/jgarff/rpi_ws281x/golang/ws2811"
-	//"../ws2811"
 	"os"
 	"strconv"
 	"time"
@@ -110,7 +109,6 @@ func main() {
 			Handle(amb, data, reset)
 		}
 		// Try to reconnect every second
-		fmt.Println("should enter unless i disconnect")
 		time.Sleep(1 * time.Second)
 	}
 }
