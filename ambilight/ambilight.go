@@ -15,6 +15,7 @@ type Ambilight struct {
 	Count   int
 	Reader  *bufio.Reader
 	Running bool
+	Buffer  []byte
 }
 
 func Init(IP string, port int, count int) *Ambilight {
@@ -23,6 +24,7 @@ func Init(IP string, port int, count int) *Ambilight {
 	amb.Port = port
 	amb.Count = count
 	amb.Running = false
+	amb.Buffer = make([]byte, count*3)
 	return amb
 }
 

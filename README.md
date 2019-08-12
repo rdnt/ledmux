@@ -53,7 +53,7 @@ Bytes (hex):
   - 5: RRRR RRRR * repeats for each additional LED
   - 6: GGGG GGGG
   - 7: BBBB BBBB
-       ...
+       ..
 ```
 
 The first byte is the ASCII **mode** character in binary.
