@@ -7,10 +7,10 @@ This project aims to deliver a robust client-server command-line application tha
 The project is currently under development. There might be bugs or inaccuracies on some parts of the documentation.
 
 **TODO:**
-- [x] Setup instructions
 - [ ] Build instructions
-- [x] Include more modes (Rainbow, Pulse etc.)
 - [ ] Add dependencies on README
+- [x] Setup instructions
+- [x] Include more modes (Rainbow, Pulse etc.)
 - [x] Documentation
 - [x] Contributing instructions
 - [x] Add binaries for Windows / Linux
@@ -45,11 +45,11 @@ When the connection is established, the client will stream data to the server vi
 
     `sudo apt-get install tmux`
 
-  2. Create a `run.sh` file on the same folder as the binary. Make sure the file is marked as executable:
+  3. Create a `run.sh` file on the same folder as the binary. Make sure the file is marked as executable:
 
     `chmod +x server`
 
-  3. Paste the following on the `run.sh` file,
+  4. Paste the following on the `run.sh` file,
     ```
     #!/bin/bash
     tmux new-session -d -s ambilight 'cd /AMBILIGHT_FOLDER && ./server LEDS_COUNT BRIGHTNESS PIN PORT'
