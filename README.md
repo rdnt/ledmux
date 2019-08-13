@@ -28,47 +28,50 @@ When the connection is established, the client will stream data to the server vi
 *Whatever dude how do I install it?*
 
 ## Installation instructions
-- **Client** (e.g. Windows PC):
-  1. Download the *client* binary for your operating system from [here](https://github.com/SHT/Core/releases/latest/).
-  2. Create a `run.bat` file on the same folder as the binary.
-  3. Paste the following on the `run.bat` file, replacing `IP`, `PORT`, `LEDS_COUNT` and `FRAMERATE` accordingly.
 
-    ```
-    client.exe IP PORT LEDS_COUNT FRAMERATE
-    ```
+#### Client (e.g. Windows PC)
 
-  4. Double click the `run.bat` file to launch the client. It will autoconnect to the server once the server is online.
+1. Download the *client* binary for your operating system from [here](https://github.com/SHT/Core/releases/latest/).
+2. Create a `run.bat` file on the same folder as the binary.
+3. Paste the following on the `run.bat` file, replacing `IP`, `PORT`, `LEDS_COUNT` and `FRAMERATE` accordingly.
+
+  ```
+  client.exe IP PORT LEDS_COUNT FRAMERATE
+  ```
+
+4. Double click the `run.bat` file to launch the client. It will autoconnect to the server once the server is online.
 
 
-- **Server** (e.g. Raspberry Pi Zero W):
-  1. Download the *server* binary for your operating system from [here](https://github.com/SHT/Core/releases/latest/).
-  2. Install `tmux` using the following command:
+#### Server (e.g. Raspberry Pi Zero W)
 
-    `sudo apt-get install tmux`
+1. Download the *server* binary for your operating system from [here](https://github.com/SHT/Core/releases/latest/).
+2. Install `tmux` using the following command:
 
-  3. Create a `run.sh` file on the same folder as the binary. Make sure the file is marked as executable:
+  `sudo apt-get install tmux`
 
-    `chmod +x server`
+3. Create a `run.sh` file on the same folder as the binary. Make sure the file is marked as executable:
 
-  4. Paste the following on the `run.sh` file, replacing `AMBILIGHT_FOLDER`, `LEDS_COUNT`, `BRIGHTNESS`, `PIN` and `PORT` accordingly.  
-    The arguments `PIN` and `PORT` are optional and default to `18` and `4197` respectively.
+  `chmod +x server`
 
-    ```
-    #!/bin/bash
-    tmux new-session -d -s ambilight 'cd /AMBILIGHT_FOLDER && ./server LEDS_COUNT BRIGHTNESS PIN PORT'
-    ```
+4. Paste the following on the `run.sh` file, replacing `AMBILIGHT_FOLDER`, `LEDS_COUNT`, `BRIGHTNESS`, `PIN` and `PORT` accordingly.  
+  The arguments `PIN` and `PORT` are optional and default to `18` and `4197` respectively.
 
-  5. (optional) Start the server at boot: Edit the `/etc/rc.local` file, adding the following before the `exit 0` line, replacing `AMBILIGHT_FOLDER` with the folder where the ambilight server binary resides.
+  ```
+  #!/bin/bash
+  tmux new-session -d -s ambilight 'cd /AMBILIGHT_FOLDER && ./server LEDS_COUNT BRIGHTNESS PIN PORT'
+  ```
 
-    ```
-    /AMBILIGHT_FOLDER/run.sh
-    ```
+5. (optional) Start the server at boot: Edit the `/etc/rc.local` file, adding the following before the `exit 0` line, replacing `AMBILIGHT_FOLDER` with the folder where the ambilight server binary resides.
 
-  6. Execute the run.sh file to start the Ambilight server (or reboot if you configured start at boot):
+  ```
+  /AMBILIGHT_FOLDER/run.sh
+  ```
 
-    ```
-    ./run.sh
-    ```
+6. Execute the run.sh file to start the Ambilight server (or reboot if you configured start at boot):
+
+  ```
+  ./run.sh
+  ```
 
 ## Modes
 
