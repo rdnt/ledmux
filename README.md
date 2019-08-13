@@ -31,7 +31,7 @@ When the connection is established, the client will stream data to the server vi
 
 #### Client (e.g. Windows PC)
 
-1. Download the *client* binary for your operating system from [here](https://github.com/SHT/Core/releases/latest/).
+1. Download the *client* binary for your operating system from [here](https://github.com/SHT/Ambilight/releases/latest/).
 2. Create a `run.bat` file on the same folder as the binary.
 3. Paste the following on the `run.bat` file, replacing `IP`, `PORT`, `LEDS_COUNT` and `FRAMERATE` accordingly.
 
@@ -44,7 +44,7 @@ When the connection is established, the client will stream data to the server vi
 
 #### Server (e.g. Raspberry Pi Zero W)
 
-1. Download the *server* binary for your operating system from [here](https://github.com/SHT/Core/releases/latest/).
+1. Download the *server* binary for your operating system from [here](https://github.com/SHT/Ambilight/releases/latest/).
 2. Install `tmux` using the following command:
 
   `sudo apt-get install tmux`
