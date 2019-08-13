@@ -33,10 +33,10 @@ When the connection is established, the client will stream data to the server vi
 
 1. Download the *client* binary for your operating system from [here](https://github.com/SHT/Ambilight/releases/latest/).
 2. Create a `run.bat` file on the same folder as the binary.
-3. Paste the following on the `run.bat` file, replacing `IP`, `PORT`, `LEDS_COUNT` and `FRAMERATE` accordingly.
+3. Paste the following on the `run.bat` file, replacing `IP`, `PORT`, `LEDS_COUNT` and `FRAMERATE` accordingly. `IP` and `PORT` are of the controller's. Framerate is limited to 144 frames per second.
 
   ```
-  client.exe IP PORT LEDS_COUNT FRAMERATE
+client.exe IP PORT LEDS_COUNT FRAMERATE
   ```
 
 4. Double click the `run.bat` file to launch the client. It will autoconnect to the server once the server is online.
@@ -57,20 +57,20 @@ When the connection is established, the client will stream data to the server vi
   The arguments `PIN` and `PORT` are optional and default to `18` and `4197` respectively.
 
   ```
-  #!/bin/bash
-  tmux new-session -d -s ambilight 'cd /AMBILIGHT_FOLDER && ./server LEDS_COUNT BRIGHTNESS PIN PORT'
+#!/bin/bash
+tmux new-session -d -s ambilight 'cd /AMBILIGHT_FOLDER && ./server LEDS_COUNT BRIGHTNESS PIN PORT'
   ```
 
 5. (optional) Start the server at boot: Edit the `/etc/rc.local` file, adding the following before the `exit 0` line, replacing `AMBILIGHT_FOLDER` with the folder where the ambilight server binary resides.
 
   ```
-  /AMBILIGHT_FOLDER/run.sh
+/AMBILIGHT_FOLDER/run.sh
   ```
 
 6. Execute the run.sh file to start the Ambilight server (or reboot if you configured start at boot):
 
   ```
-  ./run.sh
+./run.sh
   ```
 
 ## Modes
