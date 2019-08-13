@@ -2,6 +2,12 @@
 
 This project aims to deliver a robust client-server command-line application that is able to stream live, low-latency LED color data to a controller via a wireless / wired network connection.
 
+## Dependencies
+
+This project depends on the following libraries:
+ - [cretz](https://github.com/cretz) / [go-scrap](https://github.com/cretz/go-scrap) - A wrapper around the Rust [scrap](https://github.com/quadrupleslap/scrap) library, which enables us to capture screenshot.
+ - [jgarff](https://github.com/jgarff) / [rpi_ws281x](https://github.com/jgarff/rpi_ws281x) - Raspberry Pi library for controlling WS281X LEDs
+
 ## WIP
 
 The project is currently under development. There might be bugs or inaccuracies on some parts of the documentation.
@@ -82,10 +88,13 @@ R : Rainbow   : Infinite loop of a gradient color shift animation.
 
 ## Under the hood
 
-This library consists of 3 packages, a client (client.go), a server (server.go), and a wrapper package (ambilight.go) that has functions that the client and server use to connect to one another and transmit/receive data.
-There are verbose comments and documentation throughout these packages, detailing how everything is set up.
+This library consists of 3 packages, a client (client.go), a server (server.go), and a utilities package (ambilight.go) that has functions that the client and server use to connect to one another and transmit/receive data, along with maintaining the state of the Ambilight service.
 
-When the socket connection is established, the client sends a TCP packet with this format:
+Once the client is online, it indefinitely attempts to connect to the server. When the server comes online, a TCP connection is established and the client starts capturing the screen and transmitting the LED color data to the server, using the *Ambilight* operation mode.
+
+In this mode, the client is taking "screenshots", reading the border pixels, averaging them depending on the LEDs count, and sending the data to the server. The underlying [scrap](https://github.com/quadrupleslap/scrap) library captures raw pixel data from the client GPU's Backbuffer, which is a really more performant method than alternatives ([BitBlt](https://github.com/kbinani/screenshot), for example). There is no noticeable performance drop while the Ambilight mode is engaged.
+
+When the socket connection is established, the client sends a message with this format:
 
 
 ```
@@ -101,9 +110,11 @@ Bytes (binary):
        ..
 ```
 
-The first byte is the ASCII **mode** character in binary.  
+The first byte is the ASCII *mode* character.  
 The rest of the bytes that follow MUST be `N * 3`, where `N` is the number of LEDs that will be controlled.  
-If the strip has more leds the rest of the LEDs' behavior is undefined, if it has less the underlying ws2811.c library will probably error out (haven't tested that out, YMMV)
+If the strip has more or less LEDs the behavior is undefined.
+
+The Rainbow mode is basically a moving color wheel gradient, meaning that all the LEDs have the next color in the chain, and they cycle all the available colors, from red to green to blue and back to red. It is implemented server-side, so no data needs to be sent after initiating it.
 
 
 ## Contributing
