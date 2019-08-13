@@ -32,8 +32,8 @@ func main() {
 		return
 	}
 	// Validate leds count (should be the same with controller)
-	led_count, err := strconv.Atoi(args[2])
-	if err != nil || led_count < 1 || led_count > 65535 {
+	ledCount, err := strconv.Atoi(args[2])
+	if err != nil || ledCount < 1 || ledCount > 65535 {
 		fmt.Println(args[2], ": Invalid LED count. (1 - 65535)")
 		return
 	}
@@ -47,7 +47,7 @@ func main() {
 	var amb = ambilight.Init(
 		ip.String(),
 		port,
-		led_count,
+		ledCount,
 	)
 	fmt.Println("Trying to connect to Ambilight server...")
 	// Get primary display
@@ -97,6 +97,7 @@ func main() {
 	}
 }
 
+// AcquireImage captures an image from the GPU's backbuffer and returns it
 func AcquireImage(c *scrap.Capturer, framerate int) *scrap.FrameImage {
 	// Initialize a new waitgroup
 	var wg sync.WaitGroup
@@ -133,6 +134,7 @@ func AcquireImage(c *scrap.Capturer, framerate int) *scrap.FrameImage {
 	return img
 }
 
+// GetDisplayResolution returns the width and height of the target display
 func GetDisplayResolution(c *scrap.Capturer) (width int, height int) {
 	// Get width and height from capturer
 	width = c.Width()
@@ -141,6 +143,10 @@ func GetDisplayResolution(c *scrap.Capturer) (width int, height int) {
 	return width, height
 }
 
+// CaptureBounds decodes the pixel data from the specified image, stores the
+// border pixels in four arrays, averages the borders based on the specified
+// length of the strip, sets the operation mode to 'A' (Ambilight) and returns
+// the color data as a bytes array
 func CaptureBounds(img *scrap.FrameImage, width int, height int, count int) []uint8 {
 	// Initialize new waitgroup
 	var wg sync.WaitGroup
@@ -203,19 +209,19 @@ func CaptureBounds(img *scrap.FrameImage, width int, height int, count int) []ui
 	// Wait until all routines are complete
 	wg.Wait()
 	// Lets get the approximate segment size in bytes for each of the pixels
-	segment_size := int((width*3*2 + height*3*2) / count)
+	segmentSize := int((width*3*2 + height*3*2) / count)
 	// We want the actual pixels to be divisible by 3 (3 bytes = rgb for 1 pixel)
-	pixels_per_segment := segment_size / 3
+	pixelsPerSegment := segmentSize / 3
 	// Initialize the leds color data + 1 byte for the mode
-	led_data := make([]uint8, count*3+1)
+	ledData := make([]uint8, count*3+1)
 	// Loop for LED count
 	for i := 0; i < count; i++ {
 		// Initialize the color values to zero
 		var r, g, b int = 0, 0, 0
 		// Loop all pixels in the current segment
-		for j := 0; j < pixels_per_segment; j++ {
+		for j := 0; j < pixelsPerSegment; j++ {
 			// Calculate the offset (based on current segment)
-			offset := pixels_per_segment * 3 * i
+			offset := pixelsPerSegment * 3 * i
 			// Add the casted color integer to the last value
 			r += int(data[offset+j*3])
 			g += int(data[offset+j*3+1])
@@ -226,19 +232,19 @@ func CaptureBounds(img *scrap.FrameImage, width int, height int, count int) []ui
 		}
 		// Get the average by dividing the accumulated color value with the
 		// count of the pixels in the segment
-		r = r / pixels_per_segment
-		g = g / pixels_per_segment
-		b = b / pixels_per_segment
+		r = r / pixelsPerSegment
+		g = g / pixelsPerSegment
+		b = b / pixelsPerSegment
 
 		// Modify the correct bytes on the LED data
 		// Leaving the first byte untouched
-		led_data[i*3+1] = uint8(r)
-		led_data[i*3+2] = uint8(g)
-		led_data[i*3+3] = uint8(b)
+		ledData[i*3+1] = uint8(r)
+		ledData[i*3+2] = uint8(g)
+		ledData[i*3+3] = uint8(b)
 	}
 	// Ambilight mode
 	mode := 'A'
-	led_data[0] = uint8(mode)
+	ledData[0] = uint8(mode)
 	// Return the LED data
-	return led_data
+	return ledData
 }

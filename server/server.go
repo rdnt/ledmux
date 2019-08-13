@@ -12,7 +12,7 @@ import (
 func main() {
 	// Get all arguments except for program
 	args := os.Args[1:]
-	var led_count, brightness, port, pin int
+	var ledCount, brightness, port, pin int
 	var err error
 	// Make sure we get 2 to 4 arguments
 	if len(args) > 4 || len(args) < 2 {
@@ -46,8 +46,8 @@ func main() {
 	}
 
 	// Validate leds count
-	led_count, err = strconv.Atoi(args[0])
-	if err != nil || led_count < 1 || led_count > 65535 {
+	ledCount, err = strconv.Atoi(args[0])
+	if err != nil || ledCount < 1 || ledCount > 65535 {
 		fmt.Println(args[0], ": Invalid LED count. (1 - 65535)")
 		return
 	}
@@ -62,7 +62,7 @@ func main() {
 	var amb = ambilight.Init(
 		"",
 		port,
-		led_count,
+		ledCount,
 	)
 
 	// Initialize the leds
@@ -118,6 +118,8 @@ func parseMode(data []byte) (rune, []byte) {
 	return rune(data[0]), data[1:]
 }
 
+// Handle decodes the request data and renders the leds based on the mode
+// that is supplied
 func Handle(amb *ambilight.Ambilight, data []byte, reset chan struct{}) {
 	// Parse operation mode and remove the byte from the data
 	mode, data := parseMode(data)
@@ -126,16 +128,15 @@ func Handle(amb *ambilight.Ambilight, data []byte, reset chan struct{}) {
 	Render(amb, mode, data, reset)
 }
 
-// Mode that reproduces the LED data that are sent
+// Render resets the leds and calls the appropriate rendering function
 func Render(amb *ambilight.Ambilight, mode rune, data []byte, reset chan struct{}) {
-	// For each of the LEDs in the received data
+	// Stop current mode and reset the leds' state
 	if amb.Running == false {
 		amb.Running = true
 	} else {
 		reset <- struct{}{}
 	}
-	//Reset(amb);
-	//}
+	// Call appripriate routine based on the supplied mode
 	switch mode {
 	case 'R':
 		go Rainbow(amb, data, reset)
@@ -146,20 +147,7 @@ func Render(amb *ambilight.Ambilight, mode rune, data []byte, reset chan struct{
 	}
 }
 
-func Reset2(amb *ambilight.Ambilight) {
-	// Clear the leds
-	ws2811.Clear()
-	for i := 0; i < amb.Count; i++ {
-		SetLedColor(i, 0, 0, 0)
-	}
-	err := ws2811.Render()
-	// Error handling in case we can't clear the leds
-	if err != nil {
-		fmt.Println("Error while resetting the LEDs.")
-		os.Exit(1)
-	}
-}
-
+// Nullify will reset the state of the leds when an invalid mode is supplied
 func Nullify(amb *ambilight.Ambilight, data []byte, reset chan struct{}) {
 	for {
 		select {
@@ -171,6 +159,7 @@ func Nullify(amb *ambilight.Ambilight, data []byte, reset chan struct{}) {
 	}
 }
 
+// Reset sets each led's color to black (switches it off)
 func Reset(amb *ambilight.Ambilight) {
 	for i := 0; i < amb.Count; i++ {
 		SetLedColor(i, 0, 0, 0)
@@ -183,6 +172,7 @@ func Reset(amb *ambilight.Ambilight) {
 	}
 }
 
+// Rainbow loops a smooth gradient color swipe across the led strip
 func Rainbow(amb *ambilight.Ambilight, data []byte, reset chan struct{}) {
 	for {
 		var r, g, b int
@@ -218,6 +208,7 @@ func Rainbow(amb *ambilight.Ambilight, data []byte, reset chan struct{}) {
 	}
 }
 
+// Ambilight simply sets each led's color based on the received data
 func Ambilight(amb *ambilight.Ambilight, data []byte, reset chan struct{}) {
 	for {
 		select {
@@ -248,6 +239,7 @@ func Ambilight(amb *ambilight.Ambilight, data []byte, reset chan struct{}) {
 	}
 }
 
+// SetLedColor changes the color the led in the specified index
 func SetLedColor(led int, r int, g int, b int) {
 	color := uint32(0xFF)<<24 | uint32(g)<<16 | uint32(r)<<8 | uint32(b)
 	ws2811.SetLed(led, color)
