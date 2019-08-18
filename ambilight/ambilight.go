@@ -3,32 +3,49 @@ package ambilight
 import (
 	"bufio"
 	"fmt"
+	"gopkg.in/ini.v1"
 	"io"
+	"log"
 	"net"
+	"os"
+	"strconv"
 	"time"
 )
 
 // Ambilight represents the state and configuration of the server/client
 type Ambilight struct {
-	conn    net.Conn
-	IP      string
-	Port    int
-	Count   int
-	Reader  *bufio.Reader
-	Running bool
-	Buffer  []byte
+	conn      net.Conn
+	IP        string
+	Port      int
+	Count     int
+	Framerate int
+	Reader    *bufio.Reader
+	Running   bool
+	Buffer    []byte
 }
 
 // Init returns an ambilight object with the default values and the specified
 // IP port and leds count
-func Init(IP string, port int, count int) *Ambilight {
-	amb := new(Ambilight)
-	amb.IP = IP
-	amb.Port = port
-	amb.Count = count
-	amb.Running = false
-	amb.Buffer = make([]byte, count*3)
-	return amb
+func Init() *Ambilight {
+	cfg, err := ini.Load("ambilight.conf")
+	if err != nil {
+		createConfig()
+	}
+	addr := cfg.Section("").Key("ip").String()
+	ip := net.ParseIP(addr)
+	if ip.To4() == nil {
+		log.Fatal(addr, ": not a valid IPv4 address.")
+	}
+	port := getIntKey(cfg, "port", 1024, 65535)
+	count := getIntKey(cfg, "leds_count", 1, 65535)
+	fps := getIntKey(cfg, "framerate", 1, 144)
+	return &Ambilight{
+		IP:        addr,
+		Port:      port,
+		Count:     count,
+		Framerate: fps,
+		Running:   false,
+	}
 }
 
 // Connect initializes a TCP socket connection to the destination address
@@ -105,4 +122,31 @@ func (amb Ambilight) Receive(conn net.Conn) ([]byte, error) {
 func (amb Ambilight) DisconnectListener(listener net.Listener) error {
 	err := listener.Close()
 	return err
+}
+
+func createConfig() {
+	cfg := ini.Empty()
+	sec, err := cfg.GetSection("")
+	if err != nil {
+		log.Fatal("Failed to create the new configuration.")
+	}
+	sec.NewKey("ip", "127.0.0.1")
+	sec.NewKey("port", "4197")
+	sec.NewKey("leds_count", "64")
+	sec.NewKey("framerate", "60")
+	sec.NewKey("pwm_pin", "18")
+	sec.NewKey("brightness", "255")
+
+	cfg.SaveTo("ambilight.conf")
+	log.Print("Default configuration file created. Please edit and relaunch the client.")
+	os.Exit(0)
+}
+
+func getIntKey(cfg *ini.File, key string, min int, max int) int {
+	str := cfg.Section("").Key(key).String()
+	value, err := strconv.Atoi(str)
+	if err != nil || value < min || value > max {
+		log.Fatalf("%s: %s out of range (%d - %d)", str, key, min, max)
+	}
+	return value
 }

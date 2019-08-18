@@ -5,7 +5,7 @@ This project aims to deliver a robust client-server command-line application tha
 ## Dependencies
 
 This project depends on the following libraries:
- - [cretz](https://github.com/cretz) / [go-scrap](https://github.com/cretz/go-scrap) - A wrapper around the Rust [scrap](https://github.com/quadrupleslap/scrap) library, which enables us to capture screenshot.
+ - [cretz](https://github.com/cretz) / [go-scrap](https://github.com/cretz/go-scrap) - A wrapper around the Rust [scrap](https://github.com/quadrupleslap/scrap) library, which enables us to capture the contents of the screen.
  - [jgarff](https://github.com/jgarff) / [rpi_ws281x](https://github.com/jgarff/rpi_ws281x) - Raspberry Pi library for controlling WS281X LEDs
 
 ## WIP
@@ -14,7 +14,7 @@ The project is currently under development. There might be bugs or inaccuracies 
 
 **TODO:**
 - [ ] Build instructions
-- [ ] Add dependencies on README
+- [x] Add dependencies on README
 - [x] Setup instructions
 - [x] Include more modes (Rainbow, Pulse etc.)
 - [x] Documentation
