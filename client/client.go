@@ -3,7 +3,7 @@ package main
 import (
 	"../ambilight"
 	"fmt"
-	"github.com/SHT/go-scrap"
+	"github.com/cretz/go-scrap"
 	"log"
 	"os"
 	"sync"
