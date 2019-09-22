@@ -2,6 +2,7 @@ package main
 
 import (
 	"../ambilight"
+	"../config"
 	"fmt"
 	"github.com/cretz/go-scrap"
 	"log"
@@ -10,33 +11,87 @@ import (
 	"time"
 )
 
-func main() {
-	var amb = ambilight.Init()
-	// Get primary display
+// Display asdad
+type Display struct {
+	*config.Display
+	Capturer     *scrap.Capturer
+	Width        int
+	Height       int
+	BoundsOffset int
+	BoundsSize   int
+}
+
+// Pixel asd
+type Pixel struct {
+	R uint8
+	G uint8
+	B uint8
+}
+
+// GetDisplays returns a slice of display structs
+func GetDisplays(cfg *config.Config) ([]*Display, error) {
+	var displays []*Display
 	i := 0
-	var displays []*scrap.Display
 	for {
+		if i >= len(cfg.Displays) {
+			break
+		}
 		d, err := scrap.GetDisplay(i)
 		if err != nil && i == 0 {
 			// Fatal error while getting the primary display.
-			log.Fatal("No displays detected. Exiting.")
+			return nil, err
 		} else if err != nil {
 			// There was an error while loading further displays.
+			// Possibly because no other display is present.
 			// Break the loop and continue with the displays we have.
+			// TODO @sht fix GetDisplays go-scrap function to return all
+			// the available displays
 			break
 		}
-		displays = append(displays, d)
+		width := d.Width()
+		height := d.Height()
+		c, err := scrap.NewCapturer(d)
+		if err != nil {
+			return nil, err
+		}
+
+		from := cfg.Displays[i].From
+		to := cfg.Displays[i].To
+		v1 := ValidateCoordinates(width, height, from.X, from.Y)
+		v2 := ValidateCoordinates(width, height, to.X, to.Y)
+		if !v1 || !v2 {
+			log.Fatalf("Invalid coordinates for display %d.\n", i)
+		}
+		fromOffset := CalculateOffset(width, height, from.X, from.Y)
+		toOffset := CalculateOffset(width, height, to.X, to.Y)
+		size := GetPixSliceSize(width, height, fromOffset, toOffset)
+
+		displays = append(displays, &Display{
+			cfg.Displays[i],
+			c,
+			width,
+			height,
+			fromOffset,
+			size,
+		})
 		i++
 	}
-	// Create a capturer for each display
-	var capturers []*scrap.Capturer
-	for i = range displays {
-		c, err := scrap.NewCapturer(displays[i])
-		if err != nil {
-			log.Fatal(err)
-		}
-		capturers = append(capturers, c)
+	return displays, nil
+}
+
+func main() {
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Error while loading configuration: %s.\n", err)
 	}
+	amb := ambilight.Init(cfg)
+	// Get primary display
+	displays, err := GetDisplays(cfg)
+	if err != nil {
+		log.Fatalf("Could not initialize display capturers: %s", err)
+	}
+
+	// Create a capturer for each display
 	fmt.Println("Attempting to connect to the Ambilight server...")
 	// Try to reconnect if connection is closed
 	for {
@@ -44,38 +99,24 @@ func main() {
 		conn := amb.Connect()
 		// Screen capture and send data once we have an image, loop until
 		// There is an error during transmission
-		fmt.Println("connected")
+		fmt.Println("Connection established.")
 		for {
 			// Get the color data averages for each led
 			// Grab a frame capture once one is ready (max ~ 60 frames per second)
-			var wg sync.WaitGroup
-			wg.Add(len(capturers))
-			var data [][]byte
-
-			for i, c := range capturers {
-				go func() {
-					// Release waitgroup once done
-					defer wg.Done()
-					//work
-					img := AcquireImage(c, amb.Framerate)
-					// Get width and height of the display
-					width, height := GetDisplayResolution(c)
-					// Get the LED data from the borders of the captured image
-					bounds := CaptureBounds(img, width, height)
-					data[i] = bounds
-				}()
+			//wg.Add(len(capturers))
+			//var data [][]byte
+			var data []uint8
+			mode := 'A'
+			data = append(data, uint8(mode))
+			for _, d := range displays {
+				img := AcquireImage(d.Capturer, amb.Framerate)
+				pix := CapturePixels(img, d.Width, d.Height)
+				pix = FilterPixels(d, pix, d.BoundsOffset, d.BoundsSize)
+				data = append(data, AveragePixels(pix, d.Leds)...)
 			}
-
-			// Wait until all bounds are captured
-			wg.Wait()
-			for _, d := range data {
-				fmt.Println("wtf")
-				fmt.Printf("%X\n\n", d)
-			}
-			os.Exit(0)
 
 			// Send the color data to the server
-			err := amb.Send(conn, []byte{})
+			err = amb.Send(conn, data)
 			if err != nil {
 				// Close the connection
 				err := amb.Disconnect(conn)
@@ -95,13 +136,110 @@ func main() {
 	}
 }
 
+// AveragePixels returns the led color data after averaging the pixels slice,
+// based on the leds count
+func AveragePixels(pix []*Pixel, count int) []uint8 {
+	pixelsPerLed := int((len(pix)) / count)
+	// pixelsPerSegment := segmentSize / 3
+	data := make([]uint8, count*3+1) // + 1 for the mode char
+
+	for i := len(pix)/2 - 1; i >= 0; i-- {
+		opp := len(pix) - 1 - i
+		pix[i], pix[opp] = pix[opp], pix[i]
+	}
+
+	for i := 0; i < count; i++ {
+		// Initialize the color values to zero
+		var r, g, b int = 0, 0, 0
+		// Loop all pixels in the current segment
+		for j := 0; j < pixelsPerLed; j++ {
+			// Calculate the offset (based on current segment)
+			offset := pixelsPerLed * i
+			// Add the casted color integer to the last value
+			r += int(pix[offset+j].R)
+			g += int(pix[offset+j+1].G)
+			b += int(pix[offset+j+2].B)
+			// r = int(data[offset + j * 3]);
+			// g = int(data[offset + j * 3 + 1]);
+			// b = int(data[offset + j * 3 + 2]);
+		}
+		// Get the average by dividing the accumulated color value with the
+		// count of the pixels in the segment
+		r = r / pixelsPerLed
+		g = g / pixelsPerLed
+		b = b / pixelsPerLed
+
+		// Modify the correct bytes on the LED data
+		// Leaving the first byte untouched
+		data[i*3+1] = uint8(r)
+		data[i*3+2] = uint8(g)
+		data[i*3+3] = uint8(b)
+	}
+
+	return data
+
+}
+
+// FilterPixels returns the new pixels slice based on the given offset and size
+func FilterPixels(d *Display, pix []*Pixel, offset, size int) []*Pixel {
+	newBounds := make([]*Pixel, size) // 3 times the size (R G B bytes)
+	for i := 0; i < size; i++ {
+		// index = (i+from) % 6000 (adapted for 3 times the size for R G B)
+		// fmt.Println((i + offset*3) % (len(pix)))
+		newBounds[i] = pix[(i+offset)%len(pix)]
+		// newBounds[i] = pix[(i+offset*3)%(len(pix))]
+	}
+	return newBounds
+}
+
+// GetPixSliceSize returns the size the filtered pixels slice will have from
+// the given offset coordinates
+func GetPixSliceSize(width, height, from, to int) int {
+	return (width*2 + height*2) - from + to
+}
+
+// CalculateOffset returns the offset in pixels of the given edge coordinates,
+// from the start of the monitor bounds (x:0, y:0), calculating clockwise
+func CalculateOffset(width, height, x, y int) int {
+	var offset int
+	if x == 0 {
+		offset = 2*width + height + (height - y)
+	} else if x == width-1 {
+		offset = width + y
+	} else {
+		if y == 0 {
+			offset = x
+		} else if y == height-1 {
+			offset = width + height + (width - x)
+		} else {
+			return 0
+		}
+	}
+	// offset = offset % (d.Width*2 + d.Height*2)
+	return offset
+}
+
+// ValidateCoordinates asd
+func ValidateCoordinates(width, height, x, y int) bool {
+	if x == 0 || x == width-1 {
+		if y >= 0 && y < height {
+			return true
+		}
+	} else if y == 0 || y == height-1 {
+		if x >= 0 && x < width {
+			return true
+		}
+	}
+	return false
+}
+
 // AcquireImage captures an image from the GPU's backbuffer and returns it
 func AcquireImage(c *scrap.Capturer, framerate int) *scrap.FrameImage {
 	// Initialize a new waitgroup
 	var wg sync.WaitGroup
 	wg.Add(1)
 	// Initialize image object
-	var img *scrap.FrameImage
+	var image *scrap.FrameImage
 	// Get an image once it is available, trying once every ~1/60th of a second
 	go func() {
 		// Release waitgroup once done
@@ -114,11 +252,15 @@ func AcquireImage(c *scrap.Capturer, framerate int) *scrap.FrameImage {
 		for range ticker.C {
 			// Try to capture
 			img, _, err := c.FrameImage()
+			if err != nil {
+				log.Fatal(err)
+			}
 			if img != nil || err != nil {
 				// Image is available
 				if img != nil {
 					// Detach the image so it's safe to use after this method
 					img.Detach()
+					image = img
 					// Break the loop
 					break
 				}
@@ -128,28 +270,20 @@ func AcquireImage(c *scrap.Capturer, framerate int) *scrap.FrameImage {
 	// Wait until an image is ready
 	wg.Wait()
 	// Dispatch the image
-	return img
+	return image
 }
 
-// GetDisplayResolution returns the width and height of the target display
-func GetDisplayResolution(c *scrap.Capturer) (width int, height int) {
-	// Get width and height from capturer
-	width = c.Width()
-	height = c.Height()
-	// Return them
-	return width, height
-}
-
-// CaptureBounds decodes the pixel data from the specified image, stores the
+// CapturePixels decodes the pixel data from the specified image, stores the
 // border pixels in four arrays, averages the borders based on the specified
 // length of the strip, sets the operation mode to 'A' (Ambilight) and returns
 // the color data as a bytes array
-func CaptureBounds(img *scrap.FrameImage, width int, height int) []byte {
+func CapturePixels(img *scrap.FrameImage, width int, height int) []*Pixel {
 	// Initialize new waitgroup
 	var wg sync.WaitGroup
 	wg.Add(4)
 	// Two horizontal two vertical, 3 colors (3 bytes) for each pixel
-	data := make([]byte, width*3*2+height*3*2)
+	// data := make([]uint8, width*3*2+height*3*2)
+	data := make([]*Pixel, width*2+height*2)
 	// Create a wait group and add the four routines
 	// Initialize RGB values
 	var r, g, b uint32
@@ -163,9 +297,11 @@ func CaptureBounds(img *scrap.FrameImage, width int, height int) []byte {
 			// Parse RGB data
 			r, g, b, _ = img.At(x, 0).RGBA()
 			// Convert the RGB values to byte and modify the correct bytes
-			data[x*3] = byte(r)
-			data[x*3+1] = byte(g)
-			data[x*3+2] = byte(b)
+			data[x] = &Pixel{
+				R: uint8(r),
+				G: uint8(g),
+				B: uint8(b),
+			}
 		}
 	}()
 	// Right
@@ -173,34 +309,40 @@ func CaptureBounds(img *scrap.FrameImage, width int, height int) []byte {
 		defer wg.Done()
 		// Offset is 3 times the width of the display,
 		// since we need 3 bytes per pixel (RGB values)
-		offset := width * 3
+		offset := width
 		for y := 0; y < height; y++ {
 			r, g, b, _ = img.At(width-1, y).RGBA()
-			data[offset+y*3] = byte(r)
-			data[offset+y*3+1] = byte(g)
-			data[offset+y*3+2] = byte(b)
+			data[offset+y] = &Pixel{
+				R: uint8(r),
+				G: uint8(g),
+				B: uint8(b),
+			}
 		}
 	}()
 	// Bottom
 	go func() {
 		defer wg.Done()
-		offset := width*3 + height*3
+		offset := width + height
 		for x := 0; x < width; x++ {
 			r, g, b, _ = img.At(width-x-1, height-1).RGBA()
-			data[offset+x*3] = byte(r)
-			data[offset+x*3+1] = byte(g)
-			data[offset+x*3+2] = byte(b)
+			data[offset+x] = &Pixel{
+				R: uint8(r),
+				G: uint8(g),
+				B: uint8(b),
+			}
 		}
 	}()
 	// Left
 	go func() {
 		defer wg.Done()
-		offset := width*3*2 + height*3
+		offset := width*2 + height
 		for y := 0; y < height; y++ {
 			r, g, b, _ = img.At(0, height-y-1).RGBA()
-			data[offset+y*3] = byte(r)
-			data[offset+y*3+1] = byte(g)
-			data[offset+y*3+2] = byte(b)
+			data[offset+y] = &Pixel{
+				R: uint8(r),
+				G: uint8(g),
+				B: uint8(b),
+			}
 		}
 	}()
 	// Wait until all routines are complete
