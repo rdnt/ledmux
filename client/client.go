@@ -99,7 +99,6 @@ func main() {
 		conn := amb.Connect()
 		// Screen capture and send data once we have an image, loop until
 		// There is an error during transmission
-		fmt.Println("Connection established.")
 		for {
 			// Get the color data averages for each led
 			// Grab a frame capture once one is ready (max ~ 60 frames per second)
@@ -114,6 +113,13 @@ func main() {
 				pix = FilterPixels(d, pix, d.BoundsOffset, d.BoundsSize)
 				data = append(data, AveragePixels(pix, d.Leds)...)
 			}
+
+			// for i := 1; i <= 75*3; i++ {
+			// 	data[i] = 0xff
+			// }
+
+			// data[2] = 0x00
+			// data[3] = 0x00
 
 			// Send the color data to the server
 			err = amb.Send(conn, data)
@@ -139,29 +145,40 @@ func main() {
 // AveragePixels returns the led color data after averaging the pixels slice,
 // based on the leds count
 func AveragePixels(pix []*Pixel, count int) []uint8 {
-	pixelsPerLed := int((len(pix)) / count)
+	pixelsPerLed := len(pix) / count
 	// pixelsPerSegment := segmentSize / 3
-	data := make([]uint8, count*3+1) // + 1 for the mode char
+	data := make([]uint8, count*3) // + 1 for the mode char
+	// var total float64 = 0
+	// for _, value := range x {
+	// 	total += value
+	// }
+	// fmt.Println()
 
-	for i := len(pix)/2 - 1; i >= 0; i-- {
-		opp := len(pix) - 1 - i
-		pix[i], pix[opp] = pix[opp], pix[i]
-	}
+	// for i := len(pix)/2 - 1; i >= 0; i-- {
+	// 	opp := len(pix) - 1 - i
+	// 	pix[i], pix[opp] = pix[opp], pix[i]
+	// }
 
 	for i := 0; i < count; i++ {
 		// Initialize the color values to zero
 		var r, g, b int = 0, 0, 0
 		// Loop all pixels in the current segment
+		offset := pixelsPerLed * i
+		if i == count-1 {
+			// Grab the remaining n pixels
+			// They will be at most len(pix) % count
+			pixelsPerLed = len(pix) - (pixelsPerLed * (count - 1))
+		}
 		for j := 0; j < pixelsPerLed; j++ {
 			// Calculate the offset (based on current segment)
-			offset := pixelsPerLed * i
 			// Add the casted color integer to the last value
 			r += int(pix[offset+j].R)
-			g += int(pix[offset+j+1].G)
-			b += int(pix[offset+j+2].B)
+			g += int(pix[offset+j].G)
+			b += int(pix[offset+j].B)
 			// r = int(data[offset + j * 3]);
 			// g = int(data[offset + j * 3 + 1]);
 			// b = int(data[offset + j * 3 + 2]);
+			// fmt.Println(offset + j)
 		}
 		// Get the average by dividing the accumulated color value with the
 		// count of the pixels in the segment
@@ -171,9 +188,9 @@ func AveragePixels(pix []*Pixel, count int) []uint8 {
 
 		// Modify the correct bytes on the LED data
 		// Leaving the first byte untouched
-		data[i*3+1] = uint8(r)
-		data[i*3+2] = uint8(g)
-		data[i*3+3] = uint8(b)
+		data[i*3] = uint8(r)
+		data[i*3+1] = uint8(g)
+		data[i*3+2] = uint8(b)
 	}
 
 	return data
@@ -286,7 +303,6 @@ func CapturePixels(img *scrap.FrameImage, width int, height int) []*Pixel {
 	data := make([]*Pixel, width*2+height*2)
 	// Create a wait group and add the four routines
 	// Initialize RGB values
-	var r, g, b uint32
 	// Capture all the top edge pixel data
 	go func() {
 		// Once complete set as done
@@ -295,7 +311,7 @@ func CapturePixels(img *scrap.FrameImage, width int, height int) []*Pixel {
 		// Loop all the pixels
 		for x := 0; x < width; x++ {
 			// Parse RGB data
-			r, g, b, _ = img.At(x, 0).RGBA()
+			r, g, b, _ := img.At(x, 0).RGBA()
 			// Convert the RGB values to byte and modify the correct bytes
 			data[x] = &Pixel{
 				R: uint8(r),
@@ -311,7 +327,7 @@ func CapturePixels(img *scrap.FrameImage, width int, height int) []*Pixel {
 		// since we need 3 bytes per pixel (RGB values)
 		offset := width
 		for y := 0; y < height; y++ {
-			r, g, b, _ = img.At(width-1, y).RGBA()
+			r, g, b, _ := img.At(width-1, y).RGBA()
 			data[offset+y] = &Pixel{
 				R: uint8(r),
 				G: uint8(g),
@@ -324,7 +340,7 @@ func CapturePixels(img *scrap.FrameImage, width int, height int) []*Pixel {
 		defer wg.Done()
 		offset := width + height
 		for x := 0; x < width; x++ {
-			r, g, b, _ = img.At(width-x-1, height-1).RGBA()
+			r, g, b, _ := img.At(width-x-1, height-1).RGBA()
 			data[offset+x] = &Pixel{
 				R: uint8(r),
 				G: uint8(g),
@@ -337,7 +353,7 @@ func CapturePixels(img *scrap.FrameImage, width int, height int) []*Pixel {
 		defer wg.Done()
 		offset := width*2 + height
 		for y := 0; y < height; y++ {
-			r, g, b, _ = img.At(0, height-y-1).RGBA()
+			r, g, b, _ := img.At(0, height-y-1).RGBA()
 			data[offset+y] = &Pixel{
 				R: uint8(r),
 				G: uint8(g),
