@@ -2,6 +2,7 @@ package ambilight
 
 import (
 	"../config"
+	ws281x "../ws281x-wrapper"
 	"bufio"
 	"fmt"
 	"gopkg.in/ini.v1"
@@ -14,7 +15,6 @@ import (
 
 // Ambilight represents the state and configuration of the server/client
 type Ambilight struct {
-	conn      net.Conn
 	IP        string
 	Port      int
 	Count     int
@@ -23,6 +23,7 @@ type Ambilight struct {
 	Reader    *bufio.Reader
 	Running   bool
 	Buffer    []byte
+	Ws281x    *ws281x.Engine
 }
 
 // Init returns an ambilight object with the default values and the specified

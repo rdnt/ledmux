@@ -58,7 +58,7 @@ func Load() (*Config, error) {
 	if ipv4 == nil ||
 		cfg.Port < 1024 || cfg.Port > 65535 ||
 		cfg.LedsCount <= 0 || cfg.LedsCount > 65535 ||
-		cfg.Framerate < 30 || cfg.Framerate > 144 ||
+		cfg.Framerate < 1 || cfg.Framerate > 144 ||
 		cfg.GPIOPin <= 0 || cfg.GPIOPin > 40 ||
 		cfg.Brightness <= 0 || cfg.Brightness > 255 {
 		return nil, fmt.Errorf("configuration file is corrupted")

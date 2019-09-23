@@ -1,13 +1,15 @@
 // +build linux,cgo darwin,cgo
 
-package ws2811
+package ws281x-wrapper
 
 import (
 	"errors"
-	ws2811 "github.com/rpi-ws281x/rpi-ws281x-go"
+	ws281x "github.com/rpi-ws281x/rpi-ws281x-go"
 )
 
-// Engine asdad
+// Engine represents a wrapper around the ws281x library.
+// Holds the state of the leds, the leds count and a reference to the actual
+// ws281x library instance
 type Engine struct {
 	engine   *ws2811.WS2811
 	leds     []uint32
@@ -16,6 +18,7 @@ type Engine struct {
 
 // Init asdad
 func Init(pin int, ledCount int, brightness int) (*Engine, error) {
+	// Initialize ws281x engine
 	opt := ws2811.DefaultOptions
 	opt.Channels[0].Brightness = brightness
 	opt.Channels[0].LedCount = ledCount
@@ -36,14 +39,9 @@ func Init(pin int, ledCount int, brightness int) (*Engine, error) {
 	return engine, nil
 }
 
-// Fini aosdasd
+// Fini does cleanup operations
 func (ws *Engine) Fini() {
 	ws.engine.Fini()
-}
-
-// SetLedsSync adad
-func (ws *Engine) SetLedsSync(channel int, leds []uint32) error {
-	return ws.engine.SetLedsSync(channel, leds)
 }
 
 // Clear resets all the leds (turns them off by setting their color to black)
