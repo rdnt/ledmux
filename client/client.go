@@ -2,11 +2,11 @@ package main
 
 import (
 	"../ambilight"
+	"../assets"
 	"../config"
 	"fmt"
 	"github.com/cretz/go-scrap"
 	tray "github.com/getlantern/systray"
-	"io/ioutil"
 	"log"
 	"os"
 	"sync"
@@ -44,7 +44,7 @@ func main() {
 	// Setup tray
 	go tray.Run(func() {
 		// Set icon
-		ico, _ := ioutil.ReadFile("ambilight.ico")
+		ico := assets.GetIcon()
 		tray.SetIcon(ico)
 		// Setup menu items
 		title := tray.AddMenuItem("Ambilight Client by SHT", "")
