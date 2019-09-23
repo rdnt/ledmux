@@ -1,0 +1,38 @@
+/* Go Cars */
+
+$multiplier: .2;
+
+$bgColor1: #1d1c2c;
+$bgColor2: #1d1c2c;
+// $bgColor2: #252533;
+
+
+$displayColor: rgba(255,255,255,.9);
+$displayBg: rgba(255,255,255,.04);
+$displayBgActive: rgba(255,255,255,.06);
+
+$btnOpacity: .9;
+$btnBg: rgba(255,255,255,.0);
+$btnBgActive: rgba(255,255,255,.02);
+
+$buttonOutline: rgba(255,255,255,.1);
+
+// Miscellaneous
+@import "misc/Reset.scss";
+
+// Components
+@import "components/Selector.scss";
+@import "components/Customizer.scss";
+
+#app {
+    position: relative;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(to right, $bgColor1, $bgColor2);
+    overflow: hidden;
+    .fullscreen {
+        overflow: hidden !important;
+    }
+}
