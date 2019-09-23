@@ -5,8 +5,10 @@ This project aims to deliver a robust client-server command-line application tha
 ## Dependencies
 
 This project depends on the following libraries:
- - [cretz](https://github.com/cretz) / [go-scrap](https://github.com/cretz/go-scrap) - A wrapper around the Rust [scrap](https://github.com/quadrupleslap/scrap) library, which enables us to capture the contents of the screen.
- - [jgarff](https://github.com/jgarff) / [rpi_ws281x](https://github.com/jgarff/rpi_ws281x) - Raspberry Pi library for controlling WS281X LEDs
+ - [cretz](https://github.com/cretz) / [go-scrap](https://github.com/cretz/go-scrap) - A wrapper around the Rust [scrap](https://github.com/quadrupleslap/scrap) library, which enables capturing the contents of the screen.
+ - [gadgetoid, supcik, urmel11](https://github.com/orgs/rpi-ws281x/people) / [rpi_ws281x](https://github.com/rpi-ws281x/rpi-ws281x-go) - Raspberry Pi library for controlling WS281X LEDs
+ - [getlantern](https://github.com/getlantern) / [systray](github.com/getlantern/systray) - A library providing an easy API to add tray functionality
+ -
 
 ## WIP
 
