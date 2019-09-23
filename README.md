@@ -37,47 +37,46 @@ When the connection is established, the client will stream data to the server vi
 
 #### Client (e.g. Windows PC)
 
-1. Download the *client* binary for your operating system from [here](https://github.com/SHT/Ambilight/releases/latest/).
-2. Create a `run.bat` file on the same folder as the binary.
-3. Paste the following on the `run.bat` file, replacing `IP`, `PORT`, `LEDS_COUNT` and `FRAMERATE` accordingly. `IP` and `PORT` are of the controller's. Framerate is limited to 144 frames per second.
+1. Download the *client* binary for your operating system from [here](https://github.com/SHT/Ambilight/releases/latest/). Place anywhere you want. Launch the executable. Right click on the tray icon and quit.
 
-  ```
-client.exe IP PORT LEDS_COUNT FRAMERATE
-  ```
+2. The default `ambilight.conf` file was just created.
 
-4. Double click the `run.bat` file to launch the client. It will autoconnect to the server once the server is online.
+3. Edit the file to match your setup. **NOTE:** `leds_count` should be the sum of the displays' leds.
+
+4. Launch the client again. It will automatically connect to the server once the server is online.
+
 
 
 #### Server (e.g. Raspberry Pi Zero W)
 
-1. Download the *server* binary for your operating system from [here](https://github.com/SHT/Ambilight/releases/latest/).
-2. Install `tmux` using the following command:
+0. Prerequisite: Have SSH enabled and be connected to a wifi network.  
+For setup information look here: [Headless Pi Zero W Wifi Setup (Windows)](https://desertbot.io/blog/headless-pi-zero-w-wifi-setup-windows)
 
-  `sudo apt-get install tmux`
+1. Login to the raspberry via SSH.
 
-3. Create a `run.sh` file on the same folder as the binary. Make sure the file is marked as executable:
+1. Install `tmux` using the following command:
 
-  `chmod +x server`
+  `sudo apt-get install tmux -y`
 
-4. Paste the following on the `run.sh` file, replacing `AMBILIGHT_FOLDER`, `LEDS_COUNT`, `BRIGHTNESS`, `PIN` and `PORT` accordingly.  
-  The arguments `PIN` and `PORT` are optional and default to `18` and `4197` respectively.
+3. Download the server binary (for example using `wget`):
 
-  ```
-#!/bin/bash
-tmux new-session -d -s ambilight 'cd /AMBILIGHT_FOLDER && ./server LEDS_COUNT BRIGHTNESS PIN PORT'
-  ```
+  `wget https://github.com/SHT/Ambilight/releases/download/0.0.1-pre-release/ambilight-server`
 
-5. (optional) Start the server at boot: Edit the `/etc/rc.local` file, adding the following before the `exit 0` line, replacing `AMBILIGHT_FOLDER` with the folder where the ambilight server binary resides.
+4. Mark the binary as executable:
 
-  ```
-/AMBILIGHT_FOLDER/run.sh
-  ```
+  `sudo chmod +x ambilight-server`
 
-6. Execute the run.sh file to start the Ambilight server (or reboot if you configured start at boot):
+5. Start the server once, the configuration file will be created automatically. Now close the server (`Ctrl+C`).
+6. Edit the configuration file (`ambilight.conf`) to match the one you setup earlier for the client. The two configuration files *must* be the same. You can use `nano` for this (`nano ambilight.conf`).
 
-  ```
-./run.sh
-  ```
+7. To start the server, simply write `./ambilight-server` on the terminal.
+
+8. *(optional)* Start the server at boot:  
+Edit the `/etc/rc.local` file, adding the following before the `exit 0` line, replacing `AMBILIGHT_FOLDER` with the folder where the ambilight server binary resides.
+
+  `tmux new-session -d -s ambilight 'cd /AMBILIGHT_FOLDER && ./ambilight-server'`
+
+  If you reboot the server will start automatically.
 
 ## Modes
 
@@ -100,7 +99,7 @@ When the socket connection is established, the client sends a message with this 
 ```
 Bytes (binary):
 
-  - 1: MMMM MMMM * M is mode ascii character
+  - 1: MMMM MMMM * M is the mode character encoded in ascii
   - 2: RRRR RRRR * R is red
   - 3: GGGG GGGG * G is green
   - 4: BBBB BBBB * B is blue
