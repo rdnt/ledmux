@@ -69,14 +69,14 @@ For setup information look here: [Headless Pi Zero W Wifi Setup (Windows)](https
   `sudo chmod +x ambilight-server`
 
 5. Start the server once, the configuration file will be created automatically. Now close the server (`Ctrl+C`).
-6. Edit the configuration file (`ambilight.conf`) to match the one you setup earlier for the client. The two configuration files *must* be the same. You can use `nano` for this (`nano ambilight.conf`).
+6. Edit the configuration file (`ambilight.conf`) to match the one you setup earlier for the client. The two configuration files *must* be the same. You can use `nano` for this (`sudo nano ambilight.conf`).
 
 7. To start the server, simply write `sudo ./ambilight-server` on the terminal.
 
 8. *(optional)* Start the server at boot:  
-Edit the `/etc/rc.local` file, adding the following before the `exit 0` line, replacing `AMBILIGHT_FOLDER` with the folder where the ambilight server binary resides.
+Edit the `/etc/rc.local` file (`sudo nano /etc/rc.local`), adding the following before the `exit 0` line, replacing `AMBILIGHT_FOLDER` with the folder where the ambilight server binary resides.
 
-  `tmux new-session -d -s ambilight 'cd /AMBILIGHT_FOLDER && ./ambilight-server'`
+  `tmux new-session -d -s ambilight 'cd /AMBILIGHT_FOLDER && sudo ./ambilight-server'`
 
   If you reboot the server will start automatically.
 
