@@ -2,7 +2,7 @@ package ambilight
 
 import (
 	"../config"
-	ws281x "../ws281x-wrapper"
+	ws281x "../ws281x_wrapper"
 	"bufio"
 	"fmt"
 	"io"
@@ -12,27 +12,30 @@ import (
 
 // Ambilight represents the state and configuration of the server/client
 type Ambilight struct {
-	IP        string
-	Port      int
-	Count     int
-	Framerate int
-	Displays  []*config.Display
-	Reader    *bufio.Reader
-	Running   bool
-	Buffer    []byte
-	Ws281x    *ws281x.Engine
+	IP         string
+	Port       int
+	LedsCount  int
+	Framerate  int
+	GPIOPin    int
+	Brightness int
+	Displays   []*config.Display
+	Mode       rune
+	Ws281x     *ws281x.Engine
+	reader     *bufio.Reader
 }
 
 // Init returns an ambilight object with the default values and the specified
 // IP port and leds count
 func Init(cfg *config.Config) *Ambilight {
 	return &Ambilight{
-		IP:        cfg.IP,
-		Port:      cfg.Port,
-		Count:     cfg.LedsCount,
-		Framerate: cfg.Framerate,
-		Running:   false,
-		Displays:  cfg.Displays,
+		IP:         cfg.IP,
+		Port:       cfg.Port,
+		LedsCount:  cfg.LedsCount,
+		GPIOPin:    cfg.GPIOPin,
+		Framerate:  cfg.Framerate,
+		Brightness: cfg.Brightness,
+		Displays:   cfg.Displays,
+		Mode:       'A',
 	}
 }
 
@@ -68,20 +71,18 @@ func (amb Ambilight) Send(conn net.Conn, data []byte) error {
 // Listen sets up a listener and returns the connection and the listener
 func (amb Ambilight) Listen() (net.Conn, net.Listener, error) {
 	// Format address string
-	address := fmt.Sprintf("%s%s%d", amb.IP, ":", amb.Port)
+	address := fmt.Sprintf(":%d", amb.Port)
 	// Establish a listener
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return nil, nil, err
 	}
-	fmt.Printf("Listening on port %d...\n", amb.Port)
 	// Accept incoming connections
 	conn, err := listener.Accept()
 	if err != nil {
 		return nil, listener, err
 	}
 	fmt.Printf("Incoming connection from %s\n", conn.RemoteAddr())
-	//mb.Reader = bufio.NewReader(conn)
 	return conn, listener, nil
 }
 
@@ -90,14 +91,14 @@ func (amb Ambilight) Listen() (net.Conn, net.Listener, error) {
 func (amb Ambilight) Receive(conn net.Conn) ([]byte, error) {
 	// Allocate buffer to store the incoming data
 	// One more byte for the mode char
-	buffer := make([]uint8, amb.Count*3+1)
+	buffer := make([]uint8, amb.LedsCount*3+1)
 	// Create and store a socket reader on the struct
 	// if it isn't already created
-	if amb.Reader == nil {
-		amb.Reader = bufio.NewReader(conn)
+	if amb.reader == nil {
+		amb.reader = bufio.NewReader(conn)
 	}
 	// Read the data
-	_, err := io.ReadFull(amb.Reader, buffer)
+	_, err := io.ReadFull(amb.reader, buffer)
 	if err != nil {
 		return nil, err
 	}

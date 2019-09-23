@@ -1,6 +1,6 @@
 // +build linux,cgo darwin,cgo
 
-package ws281x-wrapper
+package ws281x_wrapper
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 // Holds the state of the leds, the leds count and a reference to the actual
 // ws281x library instance
 type Engine struct {
-	engine   *ws2811.WS2811
+	engine   *ws281x.WS2811
 	leds     []uint32
 	ledCount int
 }
@@ -19,11 +19,11 @@ type Engine struct {
 // Init initializes a new instance of the ws281x library
 func Init(pin int, ledCount int, brightness int) (*Engine, error) {
 	// Initialize ws281x engine
-	opt := ws2811.DefaultOptions
+	opt := ws281x.DefaultOptions
 	opt.Channels[0].Brightness = brightness
 	opt.Channels[0].LedCount = ledCount
 	opt.Channels[0].GpioPin = pin
-	ws, err := ws2811.MakeWS2811(&opt)
+	ws, err := ws281x.MakeWS2811(&opt)
 	if err != nil {
 		return nil, err
 	}

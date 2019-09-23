@@ -1,6 +1,6 @@
 // +build !linux,!darwin !cgo
 
-package ws281x
+package ws281x_wrapper
 
 // Engine struct placeholder
 type Engine struct{}

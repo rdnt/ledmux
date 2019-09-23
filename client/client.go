@@ -3,8 +3,12 @@ package main
 import (
 	"../ambilight"
 	"../config"
+	"fmt"
 	"github.com/cretz/go-scrap"
+	tray "github.com/getlantern/systray"
+	"io/ioutil"
 	"log"
+	"os"
 	"sync"
 	"time"
 )
@@ -35,11 +39,41 @@ func main() {
 	// Get primary display
 	displays, err := GetDisplays(cfg)
 	if err != nil {
-		log.Fatalf("Could not initialize display capturers: %s", err)
+		log.Fatalf("Could not initialize display capturers: %s\n.", err)
 	}
-
-	// Create a capturer for each display
-	log.Println("Attempting to connect to the Ambilight server...")
+	// Setup tray
+	go tray.Run(func() {
+		// Set icon
+		ico, _ := ioutil.ReadFile("ambilight.ico")
+		tray.SetIcon(ico)
+		// Setup menu items
+		title := tray.AddMenuItem("Ambilight Client by SHT", "")
+		title.Disable()
+		tray.AddSeparator()
+		ambMode := tray.AddMenuItem("Ambilight", "")
+		rnbMode := tray.AddMenuItem("Rainbow", "")
+		tray.AddSeparator()
+		quit := tray.AddMenuItem("Quit", "")
+		// Run an infinite loop on goroutine to detect button presses
+		go func() {
+			for {
+				select {
+				case <-quit.ClickedCh:
+					tray.Quit()
+					return
+				// Change the amb.Mode once a different mode is clicked
+				case <-ambMode.ClickedCh:
+					amb.Mode = 'A'
+				case <-rnbMode.ClickedCh:
+					amb.Mode = 'R'
+				}
+			}
+		}()
+	}, func() {
+		// Exit handler, just close the client
+		os.Exit(0)
+	})
+	fmt.Println("Attempting to connect to the Ambilight server...")
 	// Try to reconnect if connection is closed
 	for {
 		// Connect to the ambilight server
@@ -47,43 +81,49 @@ func main() {
 		// Screen capture and send data once we have an image, loop until
 		// There is an error during transmission
 		for {
-			// Get the color data averages for each led
-			// Grab a frame capture once one is ready (max ~ 60 frames per second)
-			//wg.Add(len(capturers))
-			//var data [][]byte
-			var data []uint8
-			mode := 'A'
-			data = append(data, uint8(mode))
-			for _, d := range displays {
-				img := AcquireImage(d.Capturer, amb.Framerate)
-				pix := CapturePixels(img, d.Width, d.Height)
-				pix = FilterPixels(d, pix, d.BoundsOffset, d.BoundsSize)
-				data = append(data, AveragePixels(pix, d.Leds)...)
-			}
-
-			// for i := 1; i <= 75*3; i++ {
-			// 	data[i] = 0xff
-			// }
-
-			// data[2] = 0x00
-			// data[3] = 0x00
-
-			// Send the color data to the server
-			err = amb.Send(conn, data)
-			if err != nil {
-				// Close the connection
-				err := amb.Disconnect(conn)
-				if err != nil {
-					log.Fatalf("Connection could not be closed: %s.\n", err)
+			// infinite
+			if amb.Mode == 'A' {
+				data := []uint8{uint8(amb.Mode)}
+				// Get the color data averages for each led
+				// Grab a frame capture once one is ready (max ~ 60 frames per second)
+				for _, d := range displays {
+					img := AcquireImage(d.Capturer, amb.Framerate)
+					pix := CapturePixels(img, d.Width, d.Height)
+					pix = FilterPixels(d, pix, d.BoundsOffset, d.BoundsSize)
+					data = append(data, AveragePixels(pix, d.Leds)...)
 				}
-				// Error occured, stop and try to re-establish connection
-				log.Println("Connection closed. Retrying to connect...")
-				break
+				// Send the color data to the server
+				err = amb.Send(conn, data)
+				if err != nil {
+					// Close the connection, don't check for errors
+					_ = amb.Disconnect(conn)
+					// Error occured while sending data, try and re-establish
+					// the connection
+					break
+				}
+			} else if amb.Mode == 'R' {
+				time.Sleep(16 * time.Millisecond)
+				data := []uint8{uint8(amb.Mode)}
+				data = append(data, make([]uint8, amb.LedsCount*3)...)
+				err = amb.Send(conn, data)
+				if err != nil {
+					// Close the connection, don't check for errors
+					_ = amb.Disconnect(conn)
+					// Error occured while sending data, try and re-establish
+					// the connection
+				}
+				for {
+					// time.Sleep(1 * time.Second)
+					if amb.Mode != 'R' {
+						break
+					}
+				}
 			}
-		}
+		} // infinite loop while connected
 		// Try to reconnect every second (let's not flood the server shall we)
 		time.Sleep(1 * time.Second)
 	}
+
 }
 
 // GetDisplays returns a slice of display structs
@@ -106,13 +146,16 @@ func GetDisplays(cfg *config.Config) ([]*Display, error) {
 			// the available displays
 			break
 		}
+		// Get display resolution
 		width := d.Width()
 		height := d.Height()
+		// Create a capturer
 		c, err := scrap.NewCapturer(d)
 		if err != nil {
 			return nil, err
 		}
-
+		// Validate coordinates of segment and filter the pixels based on the
+		// segment's offset and size
 		from := cfg.Displays[i].From
 		to := cfg.Displays[i].To
 		v1 := ValidateCoordinates(width, height, from.X, from.Y)
@@ -123,7 +166,7 @@ func GetDisplays(cfg *config.Config) ([]*Display, error) {
 		fromOffset := CalculateOffset(width, height, from.X, from.Y)
 		toOffset := CalculateOffset(width, height, to.X, to.Y)
 		size := GetPixSliceSize(width, height, fromOffset, toOffset)
-
+		// Append this display on the displays array
 		displays = append(displays, &Display{
 			cfg.Displays[i],
 			c,
@@ -265,7 +308,7 @@ func AcquireImage(c *scrap.Capturer, framerate int) *scrap.FrameImage {
 			// Try to capture
 			img, _, err := c.FrameImage()
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("Failed to capture framebuffer: %s\n.", err)
 			}
 			if img != nil || err != nil {
 				// Image is available

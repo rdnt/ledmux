@@ -3,7 +3,8 @@ package main
 import (
 	"../ambilight"
 	"../config"
-	ws281x "../ws281x-wrapper"
+	ws281x "../ws281x_wrapper"
+	"fmt"
 	"log"
 	"time"
 )
@@ -17,7 +18,7 @@ func main() {
 	// Create the Ambilight object
 	amb := ambilight.Init(cfg)
 	// Initialize the leds
-	amb.Ws281x, err = ws281x.Init(18, 75, 255)
+	amb.Ws281x, err = ws281x.Init(amb.GPIOPin, amb.LedsCount, amb.Brightness)
 	if err != nil {
 		log.Fatalf("Error while initializing ws281x library: %s.\n", err)
 	}
@@ -28,6 +29,7 @@ func main() {
 	}()
 	// Reset the LEDs before we start, just in case
 	Reset(amb)
+	fmt.Printf("Ambilight server listening on port %d...\n", amb.Port)
 	// Try to re-establish socket connection
 	for {
 		// Establish connection to the local socket
@@ -62,6 +64,11 @@ func main() {
 			}
 			// Split mode from data
 			mode, data = ParseMode(data)
+			if mode != amb.Mode {
+				amb.Mode = mode
+				close(stop)
+				stop = make(chan struct{})
+			}
 			// Render the leds based on the given mode and data
 			go Render(amb, mode, data, stop)
 		}
@@ -104,7 +111,7 @@ func Rainbow(amb *ambilight.Ambilight, data []byte, stop chan struct{}) {
 		// Loop color brightness 3 times
 		for i := 0; i < 256*3; i++ {
 			// For each of the leds
-			for j := 0; j < amb.Count; j++ {
+			for j := 0; j < amb.LedsCount; j++ {
 				if (i+j)%768 < 256 {
 					// transition from red to green
 					r = (255 - (i+j)%256)
@@ -122,12 +129,12 @@ func Rainbow(amb *ambilight.Ambilight, data []byte, stop chan struct{}) {
 					b = (255 - (i+j)%256)
 				}
 				select {
-				case <-stop:
-					// Stop executing if signaled from main process
-					return
 				default:
 					// Not need to check for error
 					_ = amb.Ws281x.SetLedColor(j, uint8(r), uint8(g), uint8(b))
+				case <-stop:
+					// Stop executing if signaled from main process
+					return
 				}
 			}
 			// Render the leds, ignoring errors
@@ -140,13 +147,10 @@ func Rainbow(amb *ambilight.Ambilight, data []byte, stop chan struct{}) {
 // Ambilight simply sets each led's color based on the received data
 func Ambilight(amb *ambilight.Ambilight, data []byte, stop chan struct{}) {
 	select {
-	case <-stop:
-		// Stop executing if signaled from main process
-		return
 	default:
 		// Initialize variables
 		var r, g, b uint8
-		for i := 0; i < amb.Count; i++ {
+		for i := 0; i < amb.LedsCount; i++ {
 			// Parse color data for current LED
 			r = uint8(data[i*3])
 			g = uint8(data[i*3+1])
@@ -157,5 +161,9 @@ func Ambilight(amb *ambilight.Ambilight, data []byte, stop chan struct{}) {
 		}
 		// Render the leds, ignoring errors
 		_ = amb.Ws281x.Render()
+	case <-stop:
+		// Stop executing if signaled from main process
+		return
+
 	}
 }
