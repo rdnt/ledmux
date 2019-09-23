@@ -16,7 +16,7 @@ type Engine struct {
 	ledCount int
 }
 
-// Init asdad
+// Init initializes a new instance of the ws281x library
 func Init(pin int, ledCount int, brightness int) (*Engine, error) {
 	// Initialize ws281x engine
 	opt := ws2811.DefaultOptions

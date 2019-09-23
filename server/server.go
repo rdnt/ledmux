@@ -101,23 +101,29 @@ func Reset(amb *ambilight.Ambilight) {
 func Rainbow(amb *ambilight.Ambilight, data []byte, stop chan struct{}) {
 	for {
 		var r, g, b int
+		// Loop color brightness 3 times
 		for i := 0; i < 256*3; i++ {
+			// For each of the leds
 			for j := 0; j < amb.Count; j++ {
 				if (i+j)%768 < 256 {
+					// transition from red to green
 					r = (255 - (i+j)%256)
 					g = (i + j) % 256
 					b = 0
 				} else if (i+j)%768 < 512 {
+					// transition from green to blue
 					r = 0
 					g = (255 - (i+j)%256)
 					b = (i + j) % 256
 				} else {
+					// transition from blue to red
 					r = (i + j) % 256
 					g = 0
 					b = (255 - (i+j)%256)
 				}
 				select {
 				case <-stop:
+					// Stop executing if signaled from main process
 					return
 				default:
 					// Not need to check for error
@@ -135,13 +141,10 @@ func Rainbow(amb *ambilight.Ambilight, data []byte, stop chan struct{}) {
 func Ambilight(amb *ambilight.Ambilight, data []byte, stop chan struct{}) {
 	select {
 	case <-stop:
-		// Stop running if we receive command from main process
+		// Stop executing if signaled from main process
 		return
 	default:
 		// Initialize variables
-		// for i := 0; i < 75*3; i++ {
-		// 	data[i] = 0xff
-		// }
 		var r, g, b uint8
 		for i := 0; i < amb.Count; i++ {
 			// Parse color data for current LED

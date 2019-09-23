@@ -3,10 +3,8 @@ package main
 import (
 	"../ambilight"
 	"../config"
-	"fmt"
 	"github.com/cretz/go-scrap"
 	"log"
-	"os"
 	"sync"
 	"time"
 )
@@ -28,57 +26,6 @@ type Pixel struct {
 	B uint8
 }
 
-// GetDisplays returns a slice of display structs
-func GetDisplays(cfg *config.Config) ([]*Display, error) {
-	var displays []*Display
-	i := 0
-	for {
-		if i >= len(cfg.Displays) {
-			break
-		}
-		d, err := scrap.GetDisplay(i)
-		if err != nil && i == 0 {
-			// Fatal error while getting the primary display.
-			return nil, err
-		} else if err != nil {
-			// There was an error while loading further displays.
-			// Possibly because no other display is present.
-			// Break the loop and continue with the displays we have.
-			// TODO @sht fix GetDisplays go-scrap function to return all
-			// the available displays
-			break
-		}
-		width := d.Width()
-		height := d.Height()
-		c, err := scrap.NewCapturer(d)
-		if err != nil {
-			return nil, err
-		}
-
-		from := cfg.Displays[i].From
-		to := cfg.Displays[i].To
-		v1 := ValidateCoordinates(width, height, from.X, from.Y)
-		v2 := ValidateCoordinates(width, height, to.X, to.Y)
-		if !v1 || !v2 {
-			log.Fatalf("Invalid coordinates for display %d.\n", i)
-		}
-		fromOffset := CalculateOffset(width, height, from.X, from.Y)
-		toOffset := CalculateOffset(width, height, to.X, to.Y)
-		size := GetPixSliceSize(width, height, fromOffset, toOffset)
-
-		displays = append(displays, &Display{
-			cfg.Displays[i],
-			c,
-			width,
-			height,
-			fromOffset,
-			size,
-		})
-		i++
-	}
-	return displays, nil
-}
-
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
@@ -92,7 +39,7 @@ func main() {
 	}
 
 	// Create a capturer for each display
-	fmt.Println("Attempting to connect to the Ambilight server...")
+	log.Println("Attempting to connect to the Ambilight server...")
 	// Try to reconnect if connection is closed
 	for {
 		// Connect to the ambilight server
@@ -127,19 +74,108 @@ func main() {
 				// Close the connection
 				err := amb.Disconnect(conn)
 				if err != nil {
-					fmt.Println("Connection could not be closed.")
-					fmt.Println("Exiting.")
-					os.Exit(3)
+					log.Fatalf("Connection could not be closed: %s.\n", err)
 				}
 				// Error occured, stop and try to re-establish connection
-				fmt.Println("Connection closed.")
-				fmt.Println("Retrying...")
+				log.Println("Connection closed. Retrying to connect...")
 				break
 			}
 		}
 		// Try to reconnect every second (let's not flood the server shall we)
 		time.Sleep(1 * time.Second)
 	}
+}
+
+// GetDisplays returns a slice of display structs
+func GetDisplays(cfg *config.Config) ([]*Display, error) {
+	var displays []*Display
+	i := 0
+	for {
+		if i >= len(cfg.Displays) {
+			break
+		}
+		d, err := scrap.GetDisplay(i)
+		if err != nil && i == 0 {
+			// Fatal error while getting the primary display.
+			return nil, err
+		} else if err != nil {
+			// There was an error while loading further displays.
+			// Possibly because no other display is present.
+			// Break the loop and continue with the displays we have.
+			// TODO @sht fix GetDisplays go-scrap function to return all
+			// the available displays
+			break
+		}
+		width := d.Width()
+		height := d.Height()
+		c, err := scrap.NewCapturer(d)
+		if err != nil {
+			return nil, err
+		}
+
+		from := cfg.Displays[i].From
+		to := cfg.Displays[i].To
+		v1 := ValidateCoordinates(width, height, from.X, from.Y)
+		v2 := ValidateCoordinates(width, height, to.X, to.Y)
+		if !v1 || !v2 {
+			log.Fatalf("Invalid coordinates for display %d.\n", i+1)
+		}
+		fromOffset := CalculateOffset(width, height, from.X, from.Y)
+		toOffset := CalculateOffset(width, height, to.X, to.Y)
+		size := GetPixSliceSize(width, height, fromOffset, toOffset)
+
+		displays = append(displays, &Display{
+			cfg.Displays[i],
+			c,
+			width,
+			height,
+			fromOffset,
+			size,
+		})
+		i++
+	}
+	return displays, nil
+}
+
+// ValidateCoordinates asd
+func ValidateCoordinates(width, height, x, y int) bool {
+	if x == 0 || x == width-1 {
+		if y >= 0 && y < height {
+			return true
+		}
+	} else if y == 0 || y == height-1 {
+		if x >= 0 && x < width {
+			return true
+		}
+	}
+	return false
+}
+
+// CalculateOffset returns the offset in pixels of the given edge coordinates,
+// from the start of the monitor bounds (x:0, y:0), calculating clockwise
+func CalculateOffset(width, height, x, y int) int {
+	var offset int
+	if x == 0 {
+		offset = 2*width + height + (height - y)
+	} else if x == width-1 {
+		offset = width + y
+	} else {
+		if y == 0 {
+			offset = x
+		} else if y == height-1 {
+			offset = width + height + (width - x)
+		} else {
+			return 0
+		}
+	}
+	// offset = offset % (d.Width*2 + d.Height*2)
+	return offset
+}
+
+// GetPixSliceSize returns the size the filtered pixels slice will have from
+// the given offset coordinates
+func GetPixSliceSize(width, height, from, to int) int {
+	return (width*2 + height*2) - from + to
 }
 
 // AveragePixels returns the led color data after averaging the pixels slice,
@@ -207,47 +243,6 @@ func FilterPixels(d *Display, pix []*Pixel, offset, size int) []*Pixel {
 		// newBounds[i] = pix[(i+offset*3)%(len(pix))]
 	}
 	return newBounds
-}
-
-// GetPixSliceSize returns the size the filtered pixels slice will have from
-// the given offset coordinates
-func GetPixSliceSize(width, height, from, to int) int {
-	return (width*2 + height*2) - from + to
-}
-
-// CalculateOffset returns the offset in pixels of the given edge coordinates,
-// from the start of the monitor bounds (x:0, y:0), calculating clockwise
-func CalculateOffset(width, height, x, y int) int {
-	var offset int
-	if x == 0 {
-		offset = 2*width + height + (height - y)
-	} else if x == width-1 {
-		offset = width + y
-	} else {
-		if y == 0 {
-			offset = x
-		} else if y == height-1 {
-			offset = width + height + (width - x)
-		} else {
-			return 0
-		}
-	}
-	// offset = offset % (d.Width*2 + d.Height*2)
-	return offset
-}
-
-// ValidateCoordinates asd
-func ValidateCoordinates(width, height, x, y int) bool {
-	if x == 0 || x == width-1 {
-		if y >= 0 && y < height {
-			return true
-		}
-	} else if y == 0 || y == height-1 {
-		if x >= 0 && x < width {
-			return true
-		}
-	}
-	return false
 }
 
 // AcquireImage captures an image from the GPU's backbuffer and returns it

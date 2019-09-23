@@ -18,17 +18,17 @@ func (*Engine) SetLedsSync(int, []uint32) error {
 	return nil
 }
 
-// Clear resets all the leds (turns them off by setting their color to black)
+// Clear placeholder
 func (*Engine) Clear() error {
 	return nil
 }
 
-// Render renders the colors saved on the leds array onto the led strip
+// Render placeholder
 func (*Engine) Render() error {
 	return nil
 }
 
-// SetLedColor changes the color of the led in the specified index
+// SetLedColor placeholder
 func (*Engine) SetLedColor(int, uint8, uint8, uint8) error {
 	return nil
 }
