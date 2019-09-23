@@ -5,11 +5,8 @@ import (
 	ws281x "../ws281x-wrapper"
 	"bufio"
 	"fmt"
-	"gopkg.in/ini.v1"
 	"io"
-	"log"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -113,13 +110,4 @@ func (amb Ambilight) Receive(conn net.Conn) ([]byte, error) {
 func (amb Ambilight) DisconnectListener(listener net.Listener) error {
 	err := listener.Close()
 	return err
-}
-
-func getIntKey(cfg *ini.File, key string, min int, max int) int {
-	str := cfg.Section("").Key(key).String()
-	value, err := strconv.Atoi(str)
-	if err != nil || value < min || value > max {
-		log.Fatalf("%s: %s out of range (%d - %d)", str, key, min, max)
-	}
-	return value
 }
