@@ -5,8 +5,10 @@ This project aims to deliver a robust client-server command-line application tha
 ## Dependencies
 
 This project depends on the following libraries:
- - [cretz](https://github.com/cretz) / [go-scrap](https://github.com/cretz/go-scrap) - A wrapper around the Rust [scrap](https://github.com/quadrupleslap/scrap) library, which enables us to capture the contents of the screen.
- - [jgarff](https://github.com/jgarff) / [rpi_ws281x](https://github.com/jgarff/rpi_ws281x) - Raspberry Pi library for controlling WS281X LEDs
+ - [cretz](https://github.com/cretz) / [go-scrap](https://github.com/cretz/go-scrap) - A wrapper around the Rust [scrap](https://github.com/quadrupleslap/scrap) library, which enables capturing the contents of the screen.
+ - [gadgetoid, supcik, urmel11](https://github.com/orgs/rpi-ws281x/people) / [rpi_ws281x](https://github.com/rpi-ws281x/rpi-ws281x-go) - Raspberry Pi library for controlling WS281X LEDs
+ - [getlantern](https://github.com/getlantern) / [systray](github.com/getlantern/systray) - A library providing an easy API to add tray functionality
+ -
 
 ## WIP
 
@@ -67,14 +69,14 @@ For setup information look here: [Headless Pi Zero W Wifi Setup (Windows)](https
   `sudo chmod +x ambilight-server`
 
 5. Start the server once, the configuration file will be created automatically. Now close the server (`Ctrl+C`).
-6. Edit the configuration file (`ambilight.conf`) to match the one you setup earlier for the client. The two configuration files *must* be the same. You can use `nano` for this (`nano ambilight.conf`).
+6. Edit the configuration file (`ambilight.conf`) to match the one you setup earlier for the client. The two configuration files *must* be the same. You can use `nano` for this (`sudo nano ambilight.conf`).
 
-7. To start the server, simply write `./ambilight-server` on the terminal.
+7. To start the server, simply write `sudo ./ambilight-server` on the terminal.
 
 8. *(optional)* Start the server at boot:  
-Edit the `/etc/rc.local` file, adding the following before the `exit 0` line, replacing `AMBILIGHT_FOLDER` with the folder where the ambilight server binary resides.
+Edit the `/etc/rc.local` file (`sudo nano /etc/rc.local`), adding the following before the `exit 0` line, replacing `AMBILIGHT_FOLDER` with the folder where the ambilight server binary resides.
 
-  `tmux new-session -d -s ambilight 'cd /AMBILIGHT_FOLDER && ./ambilight-server'`
+  `tmux new-session -d -s ambilight 'cd /AMBILIGHT_FOLDER && sudo ./ambilight-server'`
 
   If you reboot the server will start automatically.
 
