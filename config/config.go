@@ -46,7 +46,6 @@ func Load() (*Config, error) {
 	}
 	err = json.Unmarshal(enc, cfg)
 	if err != nil {
-		fmt.Println(err)
 		// Error while unmarshalling json, create new config file
 		cfg, err = createConfig(f)
 		if err != nil {

@@ -1,10 +1,10 @@
 package main
 
 import (
-	"../ambilight"
-	"../config"
-	ws281x "../ws281x_wrapper"
 	"fmt"
+	"github.com/sht/ambilight/ambilight"
+	"github.com/sht/ambilight/config"
+	ws281x "github.com/sht/ambilight/ws281x_wrapper"
 	"log"
 	"time"
 )

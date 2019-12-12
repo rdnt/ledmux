@@ -1,16 +1,17 @@
 package main
 
 import (
-	"../ambilight"
-	"../assets"
-	"../config"
 	"fmt"
-	"github.com/cretz/go-scrap"
-	tray "github.com/getlantern/systray"
 	"log"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/cretz/go-scrap"
+	tray "github.com/getlantern/systray"
+	"github.com/sht/ambilight/ambilight"
+	"github.com/sht/ambilight/assets"
+	"github.com/sht/ambilight/config"
 )
 
 // Display asdad
@@ -42,7 +43,8 @@ func main() {
 		log.Fatalf("Could not initialize display capturers: %s\n.", err)
 	}
 	// Setup tray
-	go tray.Run(func() {
+
+	go tray.RunWithAppWindow("SHT/Ambilight", 0, 0, func() {
 		// Set icon
 		ico := assets.GetIcon()
 		tray.SetIcon(ico)
@@ -70,9 +72,39 @@ func main() {
 			}
 		}()
 	}, func() {
-		// Exit handler, just close the client
 		os.Exit(0)
 	})
+	// go tray.Run(func() {
+	// 	// Set icon
+	// 	ico := assets.GetIcon()
+	// 	tray.SetIcon(ico)
+	// 	// Setup menu items
+	// 	title := tray.AddMenuItem("Ambilight Client by SHT", "")
+	// 	title.Disable()
+	// 	tray.AddSeparator()
+	// 	ambMode := tray.AddMenuItem("Ambilight", "")
+	// 	rnbMode := tray.AddMenuItem("Rainbow", "")
+	// 	tray.AddSeparator()
+	// 	quit := tray.AddMenuItem("Quit", "")
+	// 	// Run an infinite loop on goroutine to detect button presses
+	// 	go func() {
+	// 		for {
+	// 			select {
+	// 			case <-quit.ClickedCh:
+	// 				tray.Quit()
+	// 				return
+	// 			// Change the amb.Mode once a different mode is clicked
+	// 			case <-ambMode.ClickedCh:
+	// 				amb.Mode = 'A'
+	// 			case <-rnbMode.ClickedCh:
+	// 				amb.Mode = 'R'
+	// 			}
+	// 		}
+	// 	}()
+	// }, func() {
+	// 	// Exit handler, just close the client
+	// 	os.Exit(0)
+	// })
 	fmt.Println("Attempting to connect to the Ambilight server...")
 	// Try to reconnect if connection is closed
 	for {
