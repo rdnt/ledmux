@@ -1,10 +1,10 @@
 package ambilight
 
 import (
-	"../config"
-	ws281x "../ws281x_wrapper"
 	"bufio"
 	"fmt"
+	"github.com/sht/ambilight/config"
+	ws281x "github.com/sht/ambilight/ws281x_wrapper"
 	"io"
 	"net"
 	"time"
