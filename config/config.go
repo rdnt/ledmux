@@ -10,13 +10,14 @@ import (
 
 // Config represents the ambilight configuration file which is stored as json
 type Config struct {
-	IP         string     `json:"ip"`
-	Port       int        `json:"port"`
-	LedsCount  int        `json:"leds_count"`
-	Framerate  int        `json:"framerate"`
-	GPIOPin    int        `json:"gpio_pin"`
-	Brightness int        `json:"brightness"`
-	Displays   []*Display `json:"displays"`
+	Port       int `json:"port"`
+	LedsCount  int `json:"leds_count"`
+	GPIOPin    int `json:"gpio_pin"`
+	Brightness int `json:"brightness"`
+
+	IP        string     `json:"ip,omitempty"`
+	Framerate int        `json:"framerate,omitempty"`
+	Displays  []*Display `json:"displays,omitempty"`
 }
 
 // Display holds parameters like leds count and pixel offsets in the config
@@ -46,6 +47,7 @@ func Load() (*Config, error) {
 	}
 	err = json.Unmarshal(enc, cfg)
 	if err != nil {
+		fmt.Println(err)
 		// Error while unmarshalling json, create new config file
 		cfg, err = createConfig(f)
 		if err != nil {
@@ -114,4 +116,31 @@ func createConfig(f *os.File) (*Config, error) {
 		return nil, err
 	}
 	return &cfg, nil
+}
+
+// Save updates the saved configuration file with in-memory values
+func (cfg *Config) Save(f *os.File) error {
+	f, err := os.OpenFile("ambilight.conf", os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	enc, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	err = f.Truncate(0)
+	if err != nil {
+		return err
+	}
+	_, err = f.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(enc)
+	if err != nil {
+		return err
+	}
+	return nil
 }

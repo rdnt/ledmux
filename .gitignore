@@ -1,4 +1,6 @@
 *.bat
 *.exe
 *.conf
+.client.json
+.server.json
 /tmp
