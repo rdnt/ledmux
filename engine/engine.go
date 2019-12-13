@@ -80,7 +80,7 @@ func Init(mode string) (*Engine, error) {
 		}, nil
 	} else if mode == "client" {
 		return &Engine{
-			IP:         "192.168.1.22",
+			IP:         "192.168.1.101",
 			Port:       4197,
 			LedsCount:  75,
 			GPIOPin:    18,

@@ -79,6 +79,6 @@ func Handler(amb *engine.Engine, payload []byte) {
 	case "C":
 		fmt.Println("Cancel!")
 	case "A":
-		go effects.Ambilight(amb.Ws, payload[3:])
+		go effects.Ambilight(amb.Ws, payload[1:])
 	}
 }
