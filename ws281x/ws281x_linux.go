@@ -28,7 +28,7 @@ func Init(pin int, ledCount int, brightness int) (*Engine, error) {
 	opt.Channels[0].Brightness = brightness
 	opt.Channels[0].LedCount = ledCount
 	opt.Channels[0].GpioPin = pin
-	opt.Channels[0].StripeType = ws281x.WS2811StripGBR
+	opt.Channels[0].StripeType = ws281x.WS2811StripGRB
 	ws, err := ws281x.MakeWS2811(&opt)
 	if err != nil {
 		return nil, err
