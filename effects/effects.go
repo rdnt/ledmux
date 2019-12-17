@@ -7,7 +7,10 @@ import (
 
 // Ambilight simply sets each led's color based on the received data
 func Ambilight(ws *ws281x.Engine, data []byte) {
-	ws.Add()
+	added := ws.Add()
+	if !added {
+		return
+	}
 	defer ws.Done()
 	// start := time.Now()
 	//
@@ -37,8 +40,10 @@ func Ambilight(ws *ws281x.Engine, data []byte) {
 
 // Rainbow loops a smooth gradient color swipe across the led strip
 func Rainbow(ws *ws281x.Engine, payload []byte) {
-	// fmt.Println("-- init rainbow")
-	ws.Add()
+	added := ws.Add()
+	if !added {
+		return
+	}
 	defer ws.Done()
 	var r, g, b int
 	for {

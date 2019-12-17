@@ -11,6 +11,7 @@ type Engine struct {
 	LedsCount int
 	wg        *sync.WaitGroup
 	stop      chan struct{}
+	rendering bool
 }
 
 // Init placeholder function -- initializes all waitgroup logic on windows
@@ -30,13 +31,19 @@ func Init(_ int, ledsCount int, _ int) (*Engine, error) {
 }
 
 // Add adds a delta of 1 to the waitgroup counter
-func (ws *Engine) Add() {
+func (ws *Engine) Add() bool {
+	if ws.rendering {
+		return false
+	}
+	ws.rendering = true
 	ws.wg.Add(1)
+	return true
 }
 
 // Done decrements the waitgroup counter by one
 func (ws *Engine) Done() {
 	ws.wg.Done()
+	ws.rendering = false
 }
 
 // Cancel returns the stop channel

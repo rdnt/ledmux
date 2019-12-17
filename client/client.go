@@ -15,10 +15,11 @@ type Display struct {
 
 	Capturer *scrap.Capturer
 
-	Width        int `json:"-"`
-	Height       int `json:"-"`
-	BoundsOffset int `json:"-"`
-	BoundsSize   int `json:"-"`
+	LedsCount    int
+	Width        int
+	Height       int
+	BoundsOffset int
+	BoundsSize   int
 }
 
 type Pixel struct {
@@ -35,16 +36,15 @@ func GetDisplays(e *engine.Engine) ([]*Display, error) {
 			break
 		}
 		d, err := scrap.GetDisplay(i)
-		if err != nil {
+		if err != nil && i == 0 {
+			return nil, err
+		} else if err != nil {
 			// There was an error while loading further displays.
 			// Possibly because no other display is present.
 			// Break the loop and continue with the displays we have.
 			// TODO @sht fix GetDisplays go-scrap function to return all
 			// the available displays
 			break
-		}
-		if i == 0 {
-			return nil, err
 		}
 		// Get display resolution
 		width := d.Width()
@@ -56,6 +56,7 @@ func GetDisplays(e *engine.Engine) ([]*Display, error) {
 		}
 		// Validate coordinates of segment and filter the pixels based on the
 		// segment's offset and size
+		leds := e.Displays[i].Leds
 		from := e.Displays[i].From
 		to := e.Displays[i].To
 		v1 := ValidateCoordinates(width, height, from.X, from.Y)
@@ -67,13 +68,15 @@ func GetDisplays(e *engine.Engine) ([]*Display, error) {
 		toOffset := CalculateOffset(width, height, to.X, to.Y)
 		size := GetPixSliceSize(width, height, fromOffset, toOffset)
 		// Append this display on the displays array
-		displays = append(displays, &Display{
+		dc := Display{
 			Capturer:     c,
 			Width:        width,
 			Height:       height,
 			BoundsOffset: fromOffset,
 			BoundsSize:   size,
-		})
+			LedsCount:    leds,
+		}
+		displays = append(displays, &dc)
 		i++
 	}
 	return displays, nil
@@ -326,10 +329,13 @@ func main() {
 				img := AcquireImage(d.Capturer, amb.Framerate)
 				pix := CapturePixels(img, d.Width, d.Height)
 				pix = FilterPixels(d, pix, d.BoundsOffset, d.BoundsSize)
-				avg := AveragePixels(pix, d.Leds)
+				// fmt.Println(pix[0].B)
+				// return
+				avg := AveragePixels(pix, d.LedsCount)
 				// data = append(data, ...)
 				for _, b := range avg {
 					data[offset] = b
+					offset++
 				}
 			}
 			payload := packet.Ambilight{
