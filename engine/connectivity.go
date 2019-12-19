@@ -88,6 +88,11 @@ func (amb *Engine) AcceptConnection(handler func(*Engine, []byte)) error {
 func (amb *Engine) DisconnectClient(id string) {
 	fmt.Println("Client", id, "disconnected")
 	delete(amb.Clients, id)
+	if amb.Action == "A" {
+		amb.Ws.Stop()
+		amb.Action = ""
+	}
+
 }
 
 // HandleConnection asd
