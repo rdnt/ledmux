@@ -3,9 +3,12 @@ package main
 import (
 	"fmt"
 	"github.com/cretz/go-scrap"
+	tray "github.com/getlantern/systray"
+	"github.com/sht/ambilight/assets"
 	"github.com/sht/ambilight/engine"
 	"github.com/sht/ambilight/packet"
 	"log"
+	"os"
 	"sync"
 	"time"
 )
@@ -318,36 +321,87 @@ func main() {
 		log.Fatalf("Could not initialize display capturers: %s\n.", err)
 	}
 
+	go tray.RunWithAppWindow("Ambilight", 0, 0, func() {
+		// Set icon
+		ico := assets.GetIcon()
+		tray.SetIcon(ico)
+		// Setup menu items
+		title := tray.AddMenuItem("Ambilight Client by SHT", "")
+		title.Disable()
+		tray.AddSeparator()
+		ambMode := tray.AddMenuItem("Ambilight", "")
+		rnbMode := tray.AddMenuItem("Rainbow", "")
+		tray.AddSeparator()
+		quit := tray.AddMenuItem("Quit", "")
+		// Run an infinite loop on goroutine to detect button presses
+		go func() {
+			for {
+				select {
+				case <-quit.ClickedCh:
+					tray.Quit()
+					return
+				// Change the amb.Mode once a different mode is clicked
+				case <-ambMode.ClickedCh:
+					amb.Action = "A"
+				case <-rnbMode.ClickedCh:
+					amb.Action = "R"
+				}
+			}
+		}()
+	}, func() {
+		os.Exit(0)
+	})
+
 	fmt.Println("Attempting to connect to the Ambilight server...")
 	for {
 		amb.Connect()
 		fmt.Println("Connection established.")
+
 		for {
-			var data [1024 * 3]uint8
-			offset := 0
-			for _, d := range displays {
-				img := AcquireImage(d.Capturer, amb.Framerate)
-				pix := CapturePixels(img, d.Width, d.Height)
-				pix = FilterPixels(d, pix, d.BoundsOffset, d.BoundsSize)
-				// fmt.Println(pix[0].B)
-				// return
-				avg := AveragePixels(pix, d.LedsCount)
-				// data = append(data, ...)
-				for _, b := range avg {
-					data[offset] = b
-					offset++
+			// infinite
+			if amb.Action == "A" {
+				var data [1024 * 3]uint8
+				offset := 0
+				for _, d := range displays {
+					img := AcquireImage(d.Capturer, amb.Framerate)
+					pix := CapturePixels(img, d.Width, d.Height)
+					pix = FilterPixels(d, pix, d.BoundsOffset, d.BoundsSize)
+					// fmt.Println(pix[0].B)
+					// return
+					avg := AveragePixels(pix, d.LedsCount)
+					// data = append(data, ...)
+					for _, b := range avg {
+						data[offset] = b
+						offset++
+					}
+				}
+				payload := packet.Ambilight{
+					Action: 'A',
+					Data:   data,
+				}
+				_, err = amb.Write(payload)
+				if err != nil {
+					// Error while writing -- connection closed by server
+					break
+				}
+			} else if amb.Action == "R" {
+				payload := packet.Rainbow{
+					Action: 'R',
+				}
+				_, err = amb.Write(payload)
+				if err != nil {
+					// Error while writing -- connection closed by server
+					break
+				}
+				for {
+					// time.Sleep(1 * time.Second)
+					if amb.Action != "R" {
+						break
+					}
 				}
 			}
-			payload := packet.Ambilight{
-				Action: 'A',
-				Data:   data,
-			}
-			_, err = amb.Write(payload)
-			if err != nil {
-				// Error while writing -- connection closed by server
-				break
-			}
-		}
+		} // infinite loop while connected
+
 		fmt.Println("Connection closed. Retrying...")
 	}
 
