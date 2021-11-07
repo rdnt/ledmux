@@ -1,6 +1,4 @@
-*.bat
-*.exe
-*.conf
-.client.json
-.server.json
-/tmp
+.idea
+
+build
+tmp
