@@ -1,4 +1,5 @@
-*.bat
-*.exe
-*.conf
+/.idea
+
+/build
 /tmp
+/vendor

@@ -1,0 +1,26 @@
+defaultMode: "ambilight"
+capturerType: "bitblt"
+server:
+  host: "0.0.0.0"
+  port: 4197
+  leds: 150
+  stripType: "grb"
+  gpioPin: 18
+  brightness: 255
+displays:
+- leds: 100
+  bounds:
+    from:
+      x: 1
+      y: 2
+    to:
+      x: 3
+      y: 4
+- leds: 50
+  bounds:
+    from:
+      x: 5
+      y: 6
+    to:
+      x: 7
+      y: 8
