@@ -2,9 +2,9 @@ package client
 
 import (
 	"fmt"
-	ws281x "github.com/rpi-ws281x/rpi-ws281x-go"
 	"ledctl3/internal/client/config"
 	"ledctl3/internal/client/controller"
+	"ledctl3/internal/client/controller/ambilight"
 	"ledctl3/internal/client/controller/ambilight/capturer/bitblt"
 	"ledctl3/internal/client/controller/ambilight/capturer/dxgi"
 	"ledctl3/internal/client/controller/ambilight/capturer/scrap"
@@ -25,21 +25,21 @@ var capturerTypes = map[string]CapturerType{
 	"scrap":  Scrap,
 }
 
-type StripType int
+type StripType string
 
 const (
-	RGBW StripType = ws281x.SK6812StripRGBW
-	RBGW StripType = ws281x.SK6812StripRBGW
-	GRBW StripType = ws281x.SK6812StripGRBW
-	GBRW StripType = ws281x.SK6812StrioGBRW
-	BRGW StripType = ws281x.SK6812StrioBRGW
-	BGRW StripType = ws281x.SK6812StripBGRW
-	RGB  StripType = ws281x.WS2811StripRGB
-	RBG  StripType = ws281x.WS2811StripRBG
-	GRB  StripType = ws281x.WS2811StripGRB
-	GBR  StripType = ws281x.WS2811StripGBR
-	BRG  StripType = ws281x.WS2811StripBRG
-	BGR  StripType = ws281x.WS2811StripBGR
+	RGBW StripType = "rgbw"
+	RBGW StripType = "rbgw"
+	GRBW StripType = "grbw"
+	GBRW StripType = "gbrw"
+	BRGW StripType = "brgw"
+	BGRW StripType = "bgrw"
+	RGB  StripType = "rgb"
+	RBG  StripType = "rbg"
+	GRB  StripType = "grb"
+	GBR  StripType = "gbr"
+	BRG  StripType = "brg"
+	BGR  StripType = "bgr"
 )
 
 var stripTypes = map[string]StripType{
@@ -163,16 +163,15 @@ func (a *App) applyConfig(c config.Config) (err error) {
 	a.GpioPin = c.Server.GpioPin
 	a.Brightness = c.Server.Brightness
 
-	var displays []Display
 	for i, d := range c.Displays {
 		fromOffset := calculateOffset(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
 		toOffset := calculateOffset(d.Width, d.Height, d.Bounds.To.X, d.Bounds.To.Y)
 
 		size := getPixSliceSize(d.Width, d.Height, fromOffset, toOffset)
 
-		displays = append(
-			displays,
-			Display{
+		a.Displays = append(
+			a.Displays,
+			ambilight.DisplayConfig{
 				Id:           i,
 				Width:        d.Width,
 				Height:       d.Height,

@@ -22,56 +22,64 @@ type Engine struct {
 }
 
 // Init initializes a new instance of the ws281x library
-func Init(pin int, ledCount int, brightness int, strip string) (*Engine, error) {
+func Init(gpioPin int, ledCount int, brightness int, stripType string) (*Engine, error) {
 	// Initialize ws281x engine
 	opt := ws281x.DefaultOptions
+
 	opt.Channels[0].Brightness = brightness
 	opt.Channels[0].LedCount = ledCount
-	opt.Channels[0].GpioPin = pin
+	opt.Channels[0].GpioPin = gpioPin
+
 	st := 0
-	switch strip {
-	case "RGBW":
+
+	switch stripType {
+	case "rgbw":
 		st = ws281x.SK6812StripRGBW
-	case "RBGW":
+	case "rbgw":
 		st = ws281x.SK6812StripRBGW
-	case "GRBW":
+	case "grbw":
 		st = ws281x.SK6812StripGRBW
-	case "GBRW":
+	case "gbrw":
 		st = ws281x.SK6812StrioGBRW
-	case "BRGW":
+	case "brgw":
 		st = ws281x.SK6812StrioBRGW
-	case "BGRW":
+	case "bgrw":
 		st = ws281x.SK6812StripBGRW
-	case "RGB":
+	case "rgb":
 		st = ws281x.WS2811StripRGB
-	case "RBG":
+	case "rbg":
 		st = ws281x.WS2811StripRBG
-	case "GRB":
+	case "grb":
 		st = ws281x.WS2811StripGRB
-	case "GBR":
+	case "gbr":
 		st = ws281x.WS2811StripGBR
-	case "BRG":
+	case "brg":
 		st = ws281x.WS2811StripBRG
-	case "BGR":
+	case "bgr":
 		st = ws281x.WS2811StripBGR
 	default:
-		st = ws281x.WS2811StripGRB
+		st = ws281x.WS2811StripBGR
 	}
+
 	opt.Channels[0].StripeType = st
+
 	ws, err := ws281x.MakeWS2811(&opt)
 	if err != nil {
 		return nil, err
 	}
+
 	err = ws.Init()
 	if err != nil {
 		return nil, err
 	}
+
 	// Create the effects waitgroup
 	wg := sync.WaitGroup{}
 	// Add main routine's delta to the waitgroup
 	wg.Add(1)
 	// Initialize stop channel that will stop any running effect goroutines
 	stop := make(chan struct{})
+
 	return &Engine{
 		LedsCount: ledCount,
 		engine:    ws,

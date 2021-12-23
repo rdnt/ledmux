@@ -37,12 +37,12 @@ func (s *server) Close() error {
 }
 
 func NewServer(address string) (*server, error)  {
-	addr, err := net.ResolveUDPAddr("mockserver", address)
+	addr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := net.ListenUDP("mockserver", addr)
+	conn, err := net.ListenUDP("udp", addr)
 	if err != nil {
 		return nil, err
 	}

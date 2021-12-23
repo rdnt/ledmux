@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"github.com/vmihailenco/msgpack/v5"
 	"ledctl3/internal/client/interfaces"
 	"ledctl3/pkg/events"
@@ -69,12 +68,11 @@ var Modes = map[string]Mode{
 }
 
 func (s *Controller) SetMode(mode Mode) error {
-
 	if mode == s.mode {
 		return nil
 	}
 
-	fmt.Println("switch to mode", mode)
+	s.mode = mode
 
 	if s.visualizer != nil {
 		err := s.visualizer.Stop()
@@ -91,25 +89,6 @@ func (s *Controller) SetMode(mode Mode) error {
 	case Rainbow, Static:
 		s.visualizer = nil
 	}
-
-	s.mode = mode
-
-	return s.setMode()
-}
-
-func (s *Controller) setMode() error {
-	//if s.visualizer == nil {
-	//	return s.send(s.mode, -1, nil)
-	//}
-
-	//s.visualizer.OnUpdate(
-	//	func(groupId int, b []byte) {
-	//		err := s.send(s.mode, groupId, b)
-	//		if err != nil {
-	//			fmt.Println(err)
-	//		}
-	//	},
-	//)
 
 	if s.visualizer != nil {
 		err := s.visualizer.Start()

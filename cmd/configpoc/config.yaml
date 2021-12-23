@@ -1,7 +1,7 @@
 defaultMode: "ambilight"
-capturerType: "dxgi"
+capturerType: "bitblt"
 server:
-  host: "192.168.1.101"
+  host: "0.0.0.0"
   port: 4197
   leds: 150
   stripType: "grb"

@@ -32,16 +32,20 @@ func NewAmbilightEvent(gid int, b []byte) AmbilightEvent {
 
 type ReloadEvent struct {
 	Event
-	Leds int `msgpack:"leds"`
-	Brightness int `msgpack:"brightness"`
+	Leds       int    `msgpack:"leds"`
+	StripType  string `msgpack:"stripType"`
+	GpioPin    int    `msgpack:"gpioPin"`
+	Brightness int    `msgpack:"brightness"`
 }
 
-func NewReloadEvent(leds, brightness int) ReloadEvent {
+func NewReloadEvent(leds int, stripType string, gpioPin, brightness int) ReloadEvent {
 	return ReloadEvent{
 		Event: Event{
 			Type: Reload,
 		},
-		Leds: leds,
+		Leds:       leds,
+		StripType:  stripType,
+		GpioPin:    gpioPin,
 		Brightness: brightness,
 	}
 }

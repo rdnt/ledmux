@@ -2,9 +2,11 @@ package client
 
 import (
 	"fmt"
+	"github.com/vmihailenco/msgpack/v5"
 	"ledctl3/internal/client/controller"
-	ambilight2 "ledctl3/internal/client/controller/ambilight"
+	"ledctl3/internal/client/controller/ambilight"
 	"ledctl3/internal/client/interfaces"
+	"ledctl3/pkg/events"
 	"ledctl3/pkg/udp"
 )
 
@@ -19,7 +21,7 @@ type App struct {
 	GpioPin    int
 	Brightness int
 
-	Displays []Display
+	Displays []ambilight.DisplayConfig
 
 	//cfg config.Config
 	//ip       string
@@ -32,15 +34,6 @@ type App struct {
 	displayRepository interfaces.DisplayRepository
 	displayVisualizer interfaces.Visualizer
 	audioVisualizer   interfaces.Visualizer
-}
-
-type Display struct {
-	Id           int
-	Width        int
-	Height       int
-	Leds         int
-	BoundsOffset int
-	BoundsSize   int
 }
 
 func New(opts ...Option) (*App, error) {
@@ -59,9 +52,10 @@ func New(opts ...Option) (*App, error) {
 		return nil, err
 	}
 
-	a.displayVisualizer, err = ambilight2.New(
-		ambilight2.WithLedsCount(a.Leds),
-		ambilight2.WithDisplayRepository(a.displayRepository),
+	a.displayVisualizer, err = ambilight.New(
+		ambilight.WithLedsCount(a.Leds),
+		ambilight.WithDisplayRepository(a.displayRepository),
+		ambilight.WithDisplayConfig(a.Displays),
 	)
 	if err != nil {
 		return nil, err
@@ -89,6 +83,18 @@ func New(opts ...Option) (*App, error) {
 }
 
 func (a *App) Start() error {
+	e := events.NewReloadEvent(a.Leds, string(a.StripType), a.GpioPin, a.Brightness)
+
+	b, err := msgpack.Marshal(e)
+	if err != nil {
+		panic(err)
+	}
+
+	err = a.conn.Send(b)
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	return a.ctl.SetMode(a.DefaultMode)
 }
 

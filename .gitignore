@@ -1,4 +1,5 @@
-.idea
+/.idea
 
-build
-tmp
+/build
+/tmp
+/vendor

@@ -26,12 +26,12 @@ func (c *client) Close() error {
 }
 
 func NewClient(address string) (*client, error)  {
-	addr, err := net.ResolveUDPAddr("mockserver", address)
+	addr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := net.DialUDP("mockserver", nil, addr)
+	conn, err := net.DialUDP("udp", nil, addr)
 	if err != nil {
 		return nil, err
 	}

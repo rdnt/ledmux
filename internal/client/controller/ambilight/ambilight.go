@@ -8,11 +8,21 @@ import (
 )
 
 type Visualizer struct {
-	displays interfaces.DisplayRepository
-	leds     int
-	cancel   context.CancelFunc
-	done     chan bool
-	events   chan interfaces.UpdateEvent
+	displays   interfaces.DisplayRepository
+	leds       int
+	cancel     context.CancelFunc
+	done       chan bool
+	events     chan interfaces.UpdateEvent
+	displayCfg []DisplayConfig
+}
+
+type DisplayConfig struct {
+	Id           int
+	Width        int
+	Height       int
+	Leds         int
+	BoundsOffset int
+	BoundsSize   int
 }
 
 func (v *Visualizer) Events() chan interfaces.UpdateEvent {
@@ -56,17 +66,38 @@ func (v *Visualizer) Start() error {
 }
 
 func (v *Visualizer) process(d interfaces.Display, pix []byte) {
-	// bounds are per-display
-	boundsOffset := 5860
-	//boundsOffset := 0
-	boundsSize := 2560*2 + 1440*2 // whole screen
+	if len(pix) == 0 {
+		//fmt.Println("invalid frame", d.Id())
+		return
+	}
+
+	//if d.Id() != 0 {
+	//	return
+	//}
+
+	if d.Id() >= len(v.displayCfg) {
+		// skip as this display is not in the config
+		return
+	}
+
+	cfg := v.displayCfg[d.Id()]
+
+	if cfg.Width != d.Width() || cfg.Height != d.Height() {
+		// skip as this is an invalid config for this display
+		return
+	}
+
+	//// bounds are per-display
+	//boundsOffset := 5860
+	////boundsOffset := 0
+	//boundsSize := 2560*2 + 1440*2 // whole screen
 
 	pix = getEdges(pix, d.Width(), d.Height())
 	// TODO: do this outside this package
-	pix = getBounds(pix, boundsOffset*4, boundsSize*4)
+	pix = getBounds(pix, cfg.BoundsOffset*4, cfg.BoundsSize*4)
 
-	pix = averagePix(pix, v.leds)
-	pix = adjustWhitePoint(pix, 0, 256)
+	pix = averagePix(pix, cfg.Leds)
+	pix = adjustWhitePoint(pix, 16, 256)
 
 	v.events <- interfaces.UpdateEvent{
         Display: d,

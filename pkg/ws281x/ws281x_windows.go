@@ -3,7 +3,6 @@
 package ws281x
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -16,7 +15,7 @@ type Engine struct {
 }
 
 // Init placeholder function -- initializes all waitgroup logic on windows
-func Init(_ int, ledsCount int, _ int, _ string) (*Engine, error) {
+func Init(_ int, _ int, _ int, _ string) (*Engine, error) {
 	// Create the effects waitgroup
 	wg := sync.WaitGroup{}
 	// Add main routine's delta to the waitgroup
@@ -25,7 +24,6 @@ func Init(_ int, ledsCount int, _ int, _ string) (*Engine, error) {
 	stop := make(chan struct{})
 	// Return a reference to the engine instance
 	return &Engine{
-		LedsCount: ledsCount,
 		wg:        &wg,
 		stop:      stop,
 	}, nil
@@ -83,6 +81,6 @@ func (*Engine) Render() error {
 
 // SetLedColor placeholder
 func (*Engine) SetLedColor(id int, r uint8, g uint8, b uint8) error {
-	fmt.Println("set led", id, r, g, b)
+	//fmt.Println("set led", id, r, g, b)
 	return nil
 }

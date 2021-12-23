@@ -89,16 +89,17 @@ func (ctl *Controller) Route(e events.Event, b []byte) {
 	case events.Ambilight:
 		ctl.HandleAmbilightEvent(b)
 	case events.Reload:
+		ctl.HandleReloadEvent(b)
 	}
 }
 
 func (ctl *Controller) Start() error {
-	ws, err := ws281x.Init(18, 83, 255, "GRB")
-	if err != nil {
-		return err
-	}
+	//ws, err := ws281x.Init(18, 83, 255, "GRB")
+	//if err != nil {
+	//	return err
+	//}
 
-	ctl.ws = ws
+	//ctl.ws = ws
 
 	go func() {
 		for b := range ctl.conn.Receive() {
@@ -115,29 +116,46 @@ func (ctl *Controller) Start() error {
 	return nil
 }
 
-func (ctl *Controller) reload(ledsCount, gpioPin, brightness int) error {
-	fmt.Println("reload")
+func (ctl *Controller) reload(gpioPin, ledsCount, brightness int, stripType string) error {
 	if ctl.ws != nil {
-		return nil
+		err := ctl.ws.Clear()
+		if err != nil {
+			return err
+		}
+
+		ctl.ws.Fini()
 	}
 
-	err := ctl.ws.Clear()
-	if err != nil {
-		return err
-	}
-
-	ctl.ws.Fini()
-
-	engine, err := ws281x.Init(gpioPin, ledsCount, brightness, "GRB")
+	engine, err := ws281x.Init(gpioPin, ledsCount, brightness, stripType)
 	if err != nil {
 		return err
 	}
 
 	ctl.ws = engine
+
 	return nil
 }
 
+func (ctl *Controller) HandleReloadEvent(b []byte) {
+	var evt events.ReloadEvent
+
+	err := msgpack.Unmarshal(b, &evt)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = ctl.reload(evt.GpioPin, evt.Leds, evt.Brightness, evt.StripType)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
 func (ctl *Controller) HandleAmbilightEvent(b []byte) {
+	if ctl.ws == nil {
+		return
+	}
+
 	var evt events.AmbilightEvent
 	err := msgpack.Unmarshal(b, &evt)
 	if err != nil {

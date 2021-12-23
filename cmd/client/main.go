@@ -38,22 +38,18 @@ func main() {
 		panic(err)
 	}
 
-	s, err := client.New(
+	c, err := client.New(
 		client.WithConfig(cfg),
-		//client.WithServerIP("192.168.1.101:4197"),
-		////client.WithServerIP(":4197"),
-		//client.WithLedsCount(leds),
-		//client.WithDisplayCapturer(client.Capturer(cap)),
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	err = s.Start()
+	err = c.Start()
 	if err != nil {
 		panic(err)
 	}
-	defer s.Stop()
+	defer c.Stop()
 
 	//err = s.SetMode(serverrpi.Ambilight)
 	//if err != nil {
