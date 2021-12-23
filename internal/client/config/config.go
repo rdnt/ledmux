@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"gopkg.in/yaml.v3"
+	"ledctl3/internal/client"
 	"os"
 )
 
@@ -118,12 +119,12 @@ func Load() (*Config, error) {
 func createDefault() (*Config, error) {
 	c := Config{
 		DefaultMode:  "ambilight",
-		CapturerType: "dxgi",
+		CapturerType: "bitblt",
 		Server: Server{
 			Host:       "0.0.0.0",
 			Port:       4197,
 			Leds:       100,
-			StripType:  "GRB",
+			StripType:  string(client.GRB),
 			GpioPin:    18,
 			Brightness: 255,
 			BlackPoint: 0,
@@ -131,6 +132,8 @@ func createDefault() (*Config, error) {
 		Displays: []Display{
 			{
 				Leds: 100,
+				Width: 1920,
+				Height: 1080,
 				Bounds: Bounds{
 					From: Vector2{X: 0, Y: 0},
 					To:   Vector2{X: 0, Y: 0},
