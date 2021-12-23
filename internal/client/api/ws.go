@@ -35,8 +35,8 @@ func (h *Hub) AcceptWebsocketConnection(w http.ResponseWriter, req *http.Request
 
 		// trigger the event
 		h.evts <- Event{
-            ClientId: client.id,
-            Data: b,
-        }
+			ClientId: client.id,
+			Data:     b,
+		}
 	}
 }

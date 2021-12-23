@@ -24,8 +24,8 @@ func Init(_ int, _ int, _ int, _ string) (*Engine, error) {
 	stop := make(chan struct{})
 	// Return a reference to the engine instance
 	return &Engine{
-		wg:        &wg,
-		stop:      stop,
+		wg:   &wg,
+		stop: stop,
 	}, nil
 }
 

@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-func main()  {
+func main() {
 	ctl, err := server.New()
 	if err != nil {
-        panic(err)
-    }
+		panic(err)
+	}
 
-	err= ctl.Start()
+	err = ctl.Start()
 	if err != nil {
 		panic(err)
 	}

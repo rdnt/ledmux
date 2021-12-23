@@ -27,10 +27,10 @@ type Server struct {
 }
 
 type Display struct {
-	Width      int    `yaml:"width" json:"width"`
-	Height     int    `yaml:"height" json:"height"`
-	Leds       int    `yaml:"leds" json:"leds"`
-	Bounds     Bounds `yaml:"bounds" json:"bounds"`
+	Width  int    `yaml:"width" json:"width"`
+	Height int    `yaml:"height" json:"height"`
+	Leds   int    `yaml:"leds" json:"leds"`
+	Bounds Bounds `yaml:"bounds" json:"bounds"`
 }
 
 type Bounds struct {

@@ -26,4 +26,3 @@ func WithDisplayConfig(cfg []DisplayConfig) Option {
 		return nil
 	}
 }
-

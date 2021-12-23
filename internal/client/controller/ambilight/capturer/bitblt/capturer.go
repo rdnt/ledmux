@@ -8,7 +8,7 @@ import (
 
 var scaleFactor = 8
 
-type bitbltCapturer struct{
+type bitbltCapturer struct {
 	displays []interfaces.Display
 }
 

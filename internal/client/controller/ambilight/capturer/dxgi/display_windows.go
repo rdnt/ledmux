@@ -14,17 +14,17 @@ var framerate = 1000
 var ErrNoFrame = fmt.Errorf("no frame")
 
 type display struct {
-	index    int
-	id       int
-	width    int
-	height   int
-	x        int
-	y        int
-	scaler   draw.Scaler
-	buf      *image.RGBA
-	dev      *d3d.ID3D11Device
-	devCtx   *d3d.ID3D11DeviceContext
-	ddup     *d3d.OutputDuplicator
+	index  int
+	id     int
+	width  int
+	height int
+	x      int
+	y      int
+	scaler draw.Scaler
+	buf    *image.RGBA
+	dev    *d3d.ID3D11Device
+	devCtx *d3d.ID3D11DeviceContext
+	ddup   *d3d.OutputDuplicator
 }
 
 func (d *display) Id() int {

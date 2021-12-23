@@ -36,7 +36,7 @@ type Visualizer interface {
 
 type UpdateEvent struct {
 	Display Display
-	Data []byte
+	Data    []byte
 }
 
 type Updater interface {
