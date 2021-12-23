@@ -2,4 +2,4 @@
 
 /build
 /tmp
-/vendor
+#/vendor
