@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/gookit/color"
 	"github.com/vmihailenco/msgpack/v5"
-	"ledctl3/pkg/events"
+	"ledctl3/internal/pkg/events"
 	"ledctl3/pkg/udp"
 )
 
@@ -28,7 +28,7 @@ func main() {
 		}
 
 		fmt.Print("\r")
-		for i:=0; i<len(e.Data); i+= 4 {
+		for i := 0; i < len(e.Data); i += 4 {
 			color.RGB(e.Data[i], e.Data[i+1], e.Data[i+2], true).Print("  ")
 		}
 	}

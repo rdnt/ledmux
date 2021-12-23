@@ -8,12 +8,12 @@ import (
 )
 
 type display struct {
-	id       int
-	width    int
-	height   int
-	x        int
-	y        int
-	scaler    draw.Scaler
+	id     int
+	width  int
+	height int
+	x      int
+	y      int
+	scaler draw.Scaler
 }
 
 func (d *display) SyncCapture(ctx context.Context, frames chan []byte) {

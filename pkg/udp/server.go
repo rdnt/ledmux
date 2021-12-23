@@ -36,7 +36,7 @@ func (s *server) Close() error {
 	return s.conn.Close()
 }
 
-func NewServer(address string) (*server, error)  {
+func NewServer(address string) (*server, error) {
 	addr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
 		return nil, err

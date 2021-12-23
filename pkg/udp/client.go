@@ -15,8 +15,8 @@ type client struct {
 func (c *client) Send(b []byte) error {
 	_, err := c.conn.Write(b)
 	if err != nil {
-       return err
-    }
+		return err
+	}
 
 	return nil
 }
@@ -25,7 +25,7 @@ func (c *client) Close() error {
 	return c.conn.Close()
 }
 
-func NewClient(address string) (*client, error)  {
+func NewClient(address string) (*client, error) {
 	addr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
 		return nil, err

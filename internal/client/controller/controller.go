@@ -3,7 +3,7 @@ package controller
 import (
 	"github.com/vmihailenco/msgpack/v5"
 	"ledctl3/internal/client/interfaces"
-	"ledctl3/pkg/events"
+	"ledctl3/internal/pkg/events"
 )
 
 type Controller struct {

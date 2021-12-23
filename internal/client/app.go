@@ -6,13 +6,13 @@ import (
 	"ledctl3/internal/client/controller"
 	"ledctl3/internal/client/controller/ambilight"
 	"ledctl3/internal/client/interfaces"
-	"ledctl3/pkg/events"
+	"ledctl3/internal/pkg/events"
 	"ledctl3/pkg/udp"
 )
 
 type App struct {
-	DefaultMode  controller.Mode
-	BlackPoint int
+	DefaultMode controller.Mode
+	BlackPoint  int
 
 	Host       string
 	Port       int

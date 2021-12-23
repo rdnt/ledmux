@@ -3,7 +3,7 @@ package server
 import (
 	"fmt"
 	"github.com/vmihailenco/msgpack/v5"
-	"ledctl3/pkg/events"
+	"ledctl3/internal/pkg/events"
 	"ledctl3/pkg/udp"
 	"ledctl3/pkg/ws281x"
 )

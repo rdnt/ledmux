@@ -18,10 +18,10 @@ func (c *dxgiCapturer) All() ([]interfaces.Display, error) {
 
 	count := screenshot.NumActiveDisplays()
 	for i := 0; i < count; i++ {
-		bounds := screenshot.GetDisplayBounds(1-i) // TODO: fix weird displays order
+		bounds := screenshot.GetDisplayBounds(1 - i) // TODO: fix weird displays order
 
 		d := &display{
-			id:    i,
+			id:     i,
 			width:  bounds.Dx(),
 			height: bounds.Dy(),
 			x:      bounds.Min.X,

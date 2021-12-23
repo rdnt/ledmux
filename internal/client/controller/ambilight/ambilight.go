@@ -100,9 +100,9 @@ func (v *Visualizer) process(d interfaces.Display, pix []byte) {
 	pix = adjustWhitePoint(pix, 16, 256)
 
 	v.events <- interfaces.UpdateEvent{
-        Display: d,
-        Data:    pix,
-    }
+		Display: d,
+		Data:    pix,
+	}
 }
 
 // adjustWhitePoint adjusts the white point for each color individually.

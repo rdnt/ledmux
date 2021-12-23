@@ -7,8 +7,8 @@ import (
 )
 
 type Client struct {
-	id string
-	mux sync.Mutex
+	id   string
+	mux  sync.Mutex
 	conn *websocket.Conn
 }
 
@@ -30,7 +30,7 @@ func (c *Client) Receive() ([]byte, error) {
 
 func NewClient(conn *websocket.Conn) *Client {
 	return &Client{
-		id:  shortuuid.New(),
+		id:   shortuuid.New(),
 		conn: conn,
 	}
 }
