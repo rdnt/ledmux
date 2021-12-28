@@ -29,7 +29,7 @@ func main() {
 
 		fmt.Print("\r")
 		for i := 0; i < len(e.Data); i += 4 {
-			color.RGB(e.Data[i], e.Data[i+1], e.Data[i+2], true).Print("  ")
+			color.RGB(e.Data[i], e.Data[i+1], e.Data[i+2], true).Print(" ")
 		}
 	}
 }

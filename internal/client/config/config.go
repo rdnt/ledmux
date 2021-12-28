@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"gopkg.in/yaml.v3"
-	"ledctl3/internal/client"
 	"os"
 )
 
@@ -124,7 +123,7 @@ func createDefault() (*Config, error) {
 			Host:       "0.0.0.0",
 			Port:       4197,
 			Leds:       100,
-			StripType:  string(client.GRB),
+			StripType:  "grb",
 			GpioPin:    18,
 			Brightness: 255,
 			BlackPoint: 0,
