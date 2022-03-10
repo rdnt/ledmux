@@ -1,8 +1,11 @@
+//go:build (!linux && !darwin) || !cgo
 // +build !linux,!darwin !cgo
 
 package ws281x
 
 import (
+	"fmt"
+	"github.com/gookit/color"
 	"sync"
 )
 
@@ -76,11 +79,12 @@ func (*Engine) Clear() error {
 
 // Render placeholder
 func (*Engine) Render() error {
+	fmt.Println()
 	return nil
 }
 
 // SetLedColor placeholder
 func (*Engine) SetLedColor(id int, r uint8, g uint8, b uint8) error {
-	//fmt.Println("set led", id, r, g, b)
+	color.RGB(r, g, b, true).Print(" ")
 	return nil
 }

@@ -29,10 +29,17 @@ var modes = map[string]Mode{
 }
 
 type Controller struct {
-	conn udp.Server
-	ws   *ws281x.Engine
-	leds int
-	mode Mode
+	conn     udp.Server
+	ws       *ws281x.Engine
+	leds     int
+	segments []Segment
+	mode     Mode
+}
+
+type Segment struct {
+	id    int
+	start int
+	end   int
 }
 
 func New() (*Controller, error) {
@@ -116,7 +123,7 @@ func (ctl *Controller) Start() error {
 	return nil
 }
 
-func (ctl *Controller) reload(gpioPin, ledsCount, brightness int, stripType string) error {
+func (ctl *Controller) reload(gpioPin, ledsCount, brightness int, stripType string, segments []events.Segment) error {
 	if ctl.ws != nil {
 		err := ctl.ws.Clear()
 		if err != nil {
@@ -132,6 +139,20 @@ func (ctl *Controller) reload(gpioPin, ledsCount, brightness int, stripType stri
 	}
 
 	ctl.ws = engine
+	ctl.segments = []Segment{}
+
+	i := 0
+	for _, s := range segments {
+		ctl.segments = append(
+			ctl.segments, Segment{
+				id:    s.Id,
+				start: i,
+				end:   i + s.Leds,
+			},
+		)
+
+		i += s.Leds
+	}
 
 	return nil
 }
@@ -145,7 +166,7 @@ func (ctl *Controller) HandleReloadEvent(b []byte) {
 		return
 	}
 
-	err = ctl.reload(evt.GpioPin, evt.Leds, evt.Brightness, evt.StripType)
+	err = ctl.reload(evt.GpioPin, evt.Leds, evt.Brightness, evt.StripType, evt.Segments)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -166,19 +187,27 @@ func (ctl *Controller) HandleAmbilightEvent(b []byte) {
 		ctl.ws.Stop()
 		ctl.mode = Ambilight
 	}
+
+	if len(ctl.segments) <= evt.SegmentId {
+		panic("segment doesn't exist")
+	}
+
+	segment := ctl.segments[evt.SegmentId]
+	offset := segment.start
+
 	// TODO: properly handle out of bounds
 	//if ctl.leds != len(evt.Data) / 4 {
 	//	ctl.leds = len(evt.Data) / 4
 	//}
 
-	for i := 0; i < len(evt.Data); i += 4 {
+	for i := 0; i < (segment.end-segment.start)*4; i += 4 {
 		// Parse color data for current LED
 		r := evt.Data[i]
 		g := evt.Data[i+1]
 		b := evt.Data[i+2]
 		// Set the current LED's color
 		// Not need to check for error
-		err := ctl.ws.SetLedColor(i/4, r, g, b)
+		err := ctl.ws.SetLedColor(i/4+offset, r, g, b)
 		if err != nil {
 			fmt.Println(err)
 		}

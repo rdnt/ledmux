@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"ledctl3/internal/server"
-	"time"
+	"os"
+	"os/signal"
 )
 
 func main() {
@@ -16,5 +18,9 @@ func main() {
 		panic(err)
 	}
 
-	time.Sleep(100 * time.Hour)
+	exit := make(chan os.Signal, 1)
+	signal.Notify(exit, os.Interrupt)
+	<-exit
+
+	fmt.Println("exit")
 }

@@ -46,12 +46,11 @@ func (d *display) Resolution() string {
 	return fmt.Sprintf("%dx%d", d.width, d.height)
 }
 
-
 func (d *display) String() string {
 	return fmt.Sprintf("{id: %d, width: %d, height: %d, left: %d, top: %d}", d.id, d.width, d.height, d.x, d.y)
 }
 
-func (d *display) Capture(ctx context.Context) chan []byte {
+func (d *display) Capture(ctx context.Context, framerate int) chan []byte {
 	return nil
 }
 
@@ -59,4 +58,4 @@ func (d *display) reset() error {
 	return nil
 }
 
-func (d *display) SyncCapture(ctx context.Context, frames chan []byte) {}
+func (d *display) SyncCapture(ctx context.Context, frames chan []byte, framerate int) {}

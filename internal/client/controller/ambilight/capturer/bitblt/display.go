@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/kbinani/screenshot"
 	"golang.org/x/image/draw"
+	"time"
 )
 
 type display struct {
@@ -16,7 +17,7 @@ type display struct {
 	scaler draw.Scaler
 }
 
-func (d *display) SyncCapture(ctx context.Context, frames chan []byte) {
+func (d *display) SyncCapture(ctx context.Context, frames chan []byte, framerate int) {
 	panic("implement me")
 }
 
@@ -61,11 +62,14 @@ func (d *display) nextFrame() ([]byte, error) {
 	return img.Pix, nil
 }
 
-func (d *display) Capture(ctx context.Context) chan []byte {
+func (d *display) Capture(ctx context.Context, framerate int) chan []byte {
 	frames := make(chan []byte)
 
 	go func() {
-		for {
+		ticker := time.NewTicker(time.Duration(1000/framerate) * time.Millisecond)
+		defer ticker.Stop()
+
+		for range ticker.C {
 			select {
 			case <-ctx.Done():
 				fmt.Println("close chan")

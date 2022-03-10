@@ -98,9 +98,9 @@ func (s *Controller) SetMode(mode Mode) error {
 
 		go func() {
 			for evt := range s.visualizer.Events() {
-				if evt.Display.Id() == 1 {
-					continue
-				}
+				//if evt.Display.Id() == 1 {
+				//	continue
+				//}
 				// TODO: associate display with strip here
 				e := events.NewAmbilightEvent(evt.Display.Id(), evt.Data)
 

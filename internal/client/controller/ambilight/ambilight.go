@@ -21,6 +21,7 @@ type DisplayConfig struct {
 	Width        int
 	Height       int
 	Leds         int
+	Framerate    int
 	BoundsOffset int
 	BoundsSize   int
 }
@@ -41,7 +42,14 @@ func (v *Visualizer) Start() error {
 	v.done = make(chan bool, len(displays))
 
 	for _, d := range displays {
-		pixChan := d.Capture(ctx)
+		if d.Id() >= len(v.displayCfg) {
+			// skip as this display is not in the config
+			continue
+		}
+
+		cfg := v.displayCfg[d.Id()]
+
+		pixChan := d.Capture(ctx, cfg.Framerate)
 
 		go func(d interfaces.Display) {
 			defer fmt.Println("done")
@@ -49,6 +57,11 @@ func (v *Visualizer) Start() error {
 				select {
 				case pix := <-pixChan:
 					// async processing of incoming pix
+					if len(pix) == 0 {
+						fmt.Println("invalid frame", d)
+						return
+					}
+
 					go v.process(d, pix)
 				case <-ctx.Done():
 					if v.done != nil {
@@ -66,26 +79,25 @@ func (v *Visualizer) Start() error {
 }
 
 func (v *Visualizer) process(d interfaces.Display, pix []byte) {
-	if len(pix) == 0 {
-		//fmt.Println("invalid frame", d.Id())
-		return
-	}
 
 	//if d.Id() != 0 {
 	//	return
 	//}
 
-	if d.Id() >= len(v.displayCfg) {
-		// skip as this display is not in the config
-		return
-	}
+	//if d.Id() >= len(v.displayCfg) {
+	//	// skip as this display is not in the config
+	//	return
+	//}
 
 	cfg := v.displayCfg[d.Id()]
 
 	if cfg.Width != d.Width() || cfg.Height != d.Height() {
 		// skip as this is an invalid config for this display
+		fmt.Println("invalid config", d.Id())
 		return
 	}
+
+	//fmt.Println("process", d)
 
 	//// bounds are per-display
 	//boundsOffset := 5860

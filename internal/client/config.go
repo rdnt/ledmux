@@ -125,6 +125,10 @@ func (a *App) validateDisplays(displays []config.Display) error {
 			return fmt.Errorf("invalid width for display %d", i)
 		}
 
+		if d.Framerate <= 0 {
+			return fmt.Errorf("invalid framerate for display %d", i)
+		}
+
 		v1 := validateBounds(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
 		if !v1 {
 			return fmt.Errorf("invalid bounds for display %d (from)", i)
@@ -176,6 +180,7 @@ func (a *App) applyConfig(c config.Config) (err error) {
 				Width:        d.Width,
 				Height:       d.Height,
 				Leds:         d.Leds,
+				Framerate:    d.Framerate,
 				BoundsOffset: fromOffset,
 				BoundsSize:   size,
 			},

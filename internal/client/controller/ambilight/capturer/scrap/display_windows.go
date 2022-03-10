@@ -10,7 +10,6 @@ import (
 	"time"
 )
 
-var framerate = 240
 var ErrNoFrame = fmt.Errorf("no frame")
 
 type display struct {
@@ -24,7 +23,7 @@ type display struct {
 	capturer *goscrap.Capturer
 }
 
-func (d *display) SyncCapture(ctx context.Context, frames chan []byte) {
+func (d *display) SyncCapture(ctx context.Context, frames chan []byte, framerate int) {
 	panic("implement me")
 }
 
@@ -91,7 +90,7 @@ func (d *display) reset() error {
 	return nil
 }
 
-func (d *display) Capture(ctx context.Context) chan []byte {
+func (d *display) Capture(ctx context.Context, framerate int) chan []byte {
 	frames := make(chan []byte)
 
 	go func() {

@@ -18,8 +18,8 @@ type Display interface {
 	Scaler() draw.Scaler
 	Resolution() string
 	String() string
-	Capture(ctx context.Context) chan []byte
-	SyncCapture(ctx context.Context, frames chan []byte)
+	Capture(ctx context.Context, framerate int) chan []byte
+	SyncCapture(ctx context.Context, frames chan []byte, framerate int)
 }
 
 type AudioSource interface {

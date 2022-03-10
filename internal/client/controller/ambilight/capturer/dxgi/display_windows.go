@@ -10,7 +10,6 @@ import (
 	"time"
 )
 
-var framerate = 1000
 var ErrNoFrame = fmt.Errorf("no frame")
 
 type display struct {
@@ -106,7 +105,7 @@ func (d *display) reset() error {
 	return nil
 }
 
-func (d *display) Capture(ctx context.Context) chan []byte {
+func (d *display) Capture(ctx context.Context, framerate int) chan []byte {
 	frames := make(chan []byte)
 
 	go func() {
@@ -130,9 +129,6 @@ func (d *display) Capture(ctx context.Context) chan []byte {
 							break
 						}
 					}
-
-					//close(frames)
-					//return
 				}
 
 				frames <- pix
@@ -143,7 +139,7 @@ func (d *display) Capture(ctx context.Context) chan []byte {
 	return frames
 }
 
-func (d *display) SyncCapture(ctx context.Context, frames chan []byte) {
+func (d *display) SyncCapture(ctx context.Context, frames chan []byte, framerate int) {
 	ticker := time.NewTicker(time.Duration(1000/framerate) * time.Millisecond)
 	defer ticker.Stop()
 
@@ -164,9 +160,6 @@ func (d *display) SyncCapture(ctx context.Context, frames chan []byte) {
 						break
 					}
 				}
-
-				//close(frames)
-				//return
 			}
 
 			frames <- pix

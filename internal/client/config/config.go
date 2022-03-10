@@ -27,10 +27,11 @@ type Server struct {
 }
 
 type Display struct {
-	Width  int    `yaml:"width" json:"width"`
-	Height int    `yaml:"height" json:"height"`
-	Leds   int    `yaml:"leds" json:"leds"`
-	Bounds Bounds `yaml:"bounds" json:"bounds"`
+	Width     int    `yaml:"width" json:"width"`
+	Height    int    `yaml:"height" json:"height"`
+	Leds      int    `yaml:"leds" json:"leds"`
+	Bounds    Bounds `yaml:"bounds" json:"bounds"`
+	Framerate int    `yaml:"framerate" json:"framerate"`
 }
 
 type Bounds struct {
@@ -130,9 +131,10 @@ func createDefault() (*Config, error) {
 		},
 		Displays: []Display{
 			{
-				Leds: 100,
-				Width: 1920,
-				Height: 1080,
+				Leds:      100,
+				Width:     1920,
+				Height:    1080,
+				Framerate: 60,
 				Bounds: Bounds{
 					From: Vector2{X: 0, Y: 0},
 					To:   Vector2{X: 0, Y: 0},

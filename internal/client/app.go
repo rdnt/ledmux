@@ -83,7 +83,18 @@ func New(opts ...Option) (*App, error) {
 }
 
 func (a *App) Start() error {
-	e := events.NewReloadEvent(a.Leds, string(a.StripType), a.GpioPin, a.Brightness)
+	segments := []events.Segment{}
+
+	for _, d := range a.Displays {
+		segments = append(
+			segments, events.Segment{
+				Id:   d.Id,
+				Leds: d.Leds,
+			},
+		)
+	}
+
+	e := events.NewReloadEvent(a.Leds, string(a.StripType), a.GpioPin, a.Brightness, segments)
 
 	b, err := msgpack.Marshal(e)
 	if err != nil {

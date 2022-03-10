@@ -49,7 +49,7 @@ func main() {
 	}
 
 	for _, d := range displays {
-		frames := d.Capture(ctx)
+		frames := d.Capture(ctx, 60)
 
 		go func(d interfaces.Display) {
 			for range frames {
