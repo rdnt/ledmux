@@ -20,7 +20,7 @@ func (c *dxgiCapturer) All() ([]interfaces.Display, error) {
 		bounds := screenshot.GetDisplayBounds(i)
 
 		d := &display{
-			index:  i,
+			id:     i,
 			width:  bounds.Dx(),
 			height: bounds.Dy(),
 			x:      bounds.Min.X,

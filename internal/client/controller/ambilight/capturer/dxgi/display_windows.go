@@ -55,7 +55,7 @@ func (d *display) Resolution() string {
 }
 
 func (d *display) String() string {
-	return fmt.Sprintf("{id: %d, width: %d, height: %d, left: %d, top: %d}", d.id, d.width, d.height, d.x, d.y)
+	return fmt.Sprintf("Display{id: %d, width: %d, height: %d, left: %d, top: %d}", d.id, d.width, d.height, d.x, d.y)
 }
 
 func (d *display) nextFrame() ([]byte, error) {
@@ -115,22 +115,32 @@ func (d *display) Capture(ctx context.Context, framerate int) chan []byte {
 		for range ticker.C {
 			select {
 			case <-ctx.Done():
+				fmt.Println(d.id, "context done")
 				close(frames)
 				return
 			default:
 				pix, err := d.nextFrame()
 				if errors.Is(err, ErrNoFrame) {
+					//fmt.Println(d.id, "no frame")
 					continue
-				}
-				if err != nil {
-					for {
-						err := d.reset()
-						if err == nil {
-							break
-						}
+				} else if err != nil {
+					fmt.Println(d.id, "non-nil error", err)
+					
+					err := d.reset()
+					if err != nil {
+						fmt.Println(d.id, "failed to reset from capture")
 					}
+
+					close(frames)
+					return
 				}
 
+				if pix == nil {
+					fmt.Println(d.id, "invalid frame")
+					continue
+				}
+
+				//fmt.Println(d.id, "dispatch")
 				frames <- pix
 			}
 		}

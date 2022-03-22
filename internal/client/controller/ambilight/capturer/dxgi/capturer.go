@@ -1,6 +1,7 @@
 package dxgi
 
 import (
+	"fmt"
 	"github.com/kbinani/screenshot"
 	"golang.org/x/image/draw"
 	"image"
@@ -34,6 +35,7 @@ func (c *dxgiCapturer) All() ([]interfaces.Display, error) {
 
 		err := d.reset()
 		if err != nil {
+			fmt.Println("failed to reset display from All", i, err)
 			continue
 		}
 

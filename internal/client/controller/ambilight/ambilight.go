@@ -5,80 +5,108 @@ import (
 	"fmt"
 	"ledctl3/internal/client/interfaces"
 	"sync"
+	"time"
 )
 
 type Visualizer struct {
-	displays   interfaces.DisplayRepository
-	leds       int
-	cancel     context.CancelFunc
-	done       chan bool
-	events     chan interfaces.UpdateEvent
-	displayCfg []DisplayConfig
+	displays       interfaces.DisplayRepository
+	leds           int
+	cancel         context.CancelFunc
+	done           chan bool
+	events         chan interfaces.UpdateEvent
+	displayConfigs [][]DisplayConfig
 }
 
 type DisplayConfig struct {
 	Id           int
 	Width        int
 	Height       int
+	Left         int
+	Top          int
 	Leds         int
 	Framerate    int
 	BoundsOffset int
 	BoundsSize   int
 }
 
+func (d DisplayConfig) String() string {
+	return fmt.Sprintf(
+		"DisplayConfig{id: %d, width: %d, height: %d, left: %d, top: %d, leds: %d, framerate: %d, offset: %d, size: %d}", d.Id, d.Width, d.Height, d.Left, d.Top, d.Leds, d.Framerate, d.BoundsOffset,
+		d.BoundsSize,
+	)
+}
+
 func (v *Visualizer) Events() chan interfaces.UpdateEvent {
 	return v.events
 }
 
-func (v *Visualizer) Start() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	v.cancel = cancel
+func (v *Visualizer) startCapture(ctx context.Context) error {
+	captureCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	displays, err := v.displays.All()
 	if err != nil {
 		return err
 	}
 
-	v.done = make(chan bool, len(displays))
+	displayConfigs, err := v.MatchDisplays(displays)
+	if err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(displays))
 
 	for _, d := range displays {
-		if d.Id() >= len(v.displayCfg) {
-			// skip as this display is not in the config
-			continue
-		}
-
-		cfg := v.displayCfg[d.Id()]
-
-		pixChan := d.Capture(ctx, cfg.Framerate)
+		cfg := displayConfigs[d.Id()]
+		fmt.Println(d, cfg)
 
 		go func(d interfaces.Display) {
-			defer fmt.Println("done")
-			for {
-				select {
-				case pix := <-pixChan:
-					// async processing of incoming pix
-					if len(pix) == 0 {
-						fmt.Println("invalid frame", d)
-						return
-					}
+			defer wg.Done()
+			frames := d.Capture(captureCtx, cfg.Framerate)
 
-					go v.process(d, pix)
-				case <-ctx.Done():
-					if v.done != nil {
-						v.done <- true
-						close(v.done)
-						v.done = nil
-					}
-					return
-				}
+			for frame := range frames {
+				go v.process(d, cfg, frame)
 			}
+
+			cancel()
 		}(d)
 	}
+
+	wg.Wait()
+	time.Sleep(3 * time.Second)
 
 	return nil
 }
 
-func (v *Visualizer) process(d interfaces.Display, pix []byte) {
+func (v *Visualizer) Start() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	v.cancel = cancel
+	v.done = make(chan bool)
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				fmt.Println("parent ctx done, exiting")
+				v.done <- true
+				return
+			default:
+				fmt.Println("STARTING CAPTURE")
+				err := v.startCapture(ctx)
+				if err != nil {
+					fmt.Println("error starting capture:", err)
+				}
+
+				time.Sleep(3 * time.Second)
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (v *Visualizer) process(d interfaces.Display, cfg DisplayConfig, pix []byte) {
 
 	//if d.Id() != 0 {
 	//	return
@@ -89,13 +117,11 @@ func (v *Visualizer) process(d interfaces.Display, pix []byte) {
 	//	return
 	//}
 
-	cfg := v.displayCfg[d.Id()]
-
-	if cfg.Width != d.Width() || cfg.Height != d.Height() {
-		// skip as this is an invalid config for this display
-		fmt.Println("invalid config", d.Id())
-		return
-	}
+	//if cfg.Width != d.Width() || cfg.Height != d.Height() {
+	//	// skip as this is an invalid config for this display
+	//	fmt.Println("invalid config", d.Id())
+	//	return
+	//}
 
 	//fmt.Println("process", d)
 
@@ -112,8 +138,8 @@ func (v *Visualizer) process(d interfaces.Display, pix []byte) {
 	pix = adjustWhitePoint(pix, 16, 256)
 
 	v.events <- interfaces.UpdateEvent{
-		Display: d,
-		Data:    pix,
+		SegmentId: d.Id(),
+		Data:      pix,
 	}
 }
 
@@ -258,9 +284,80 @@ func (v *Visualizer) Stop() error {
 		v.cancel = nil
 	}
 
+	fmt.Println("stop: waiting for done")
+
 	<-v.done
 
+	fmt.Println("stop: done received")
 	return nil
+}
+
+func (v *Visualizer) initialize() error {
+	//cfg2sys, err := v.MatchDisplays(displays)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//fmt.Println(cfg2sys)
+
+	return nil
+}
+
+// MatchDisplays tries to map a display entry from the system to one in the
+// config file. It should be re-run whenever the config file changes or a
+// display capturer becomes invalid, for example if an app enters fullscreen or
+// when a display is (dis)connected.
+func (v *Visualizer) MatchDisplays(displays []interfaces.Display) (map[int]DisplayConfig, error) {
+	// try to find matching configuration
+	var match map[int]DisplayConfig
+
+	for _, cfg := range v.displayConfigs {
+		sys2cfg := map[int]int{}
+		cfg2sys := map[int]int{}
+
+		for _, displayCfg := range cfg {
+			for _, sysd := range displays {
+				_, ok1 := cfg2sys[displayCfg.Id]
+				_, ok2 := sys2cfg[sysd.Id()]
+
+				if ok1 || ok2 {
+					// this display has already been matched with a config entry
+					continue
+				}
+
+				widthEq := sysd.Width() == displayCfg.Width
+				heightEq := sysd.Height() == displayCfg.Height
+				leftEq := sysd.X() == displayCfg.Left
+				topEq := sysd.Y() == displayCfg.Top
+
+				if widthEq && heightEq && leftEq && topEq {
+					// resolution and offset is the same, match found!
+					cfg2sys[displayCfg.Id] = sysd.Id()
+					sys2cfg[sysd.Id()] = displayCfg.Id
+
+					break
+				}
+			}
+		}
+
+		if len(sys2cfg) != len(displays) {
+			// not all displays have been matched, try another config
+			continue
+		}
+
+		match = map[int]DisplayConfig{}
+		for displayId, configId := range sys2cfg {
+			match[displayId] = cfg[configId]
+		}
+
+		break
+	}
+
+	if match == nil {
+		return nil, fmt.Errorf("no valid config found")
+	}
+
+	return match, nil
 }
 
 func New(opts ...Option) (*Visualizer, error) {
@@ -271,6 +368,15 @@ func New(opts ...Option) (*Visualizer, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if v.displays == nil {
+		return nil, fmt.Errorf("invalid display repository")
+	}
+
+	err := v.initialize()
+	if err != nil {
+		return nil, err
 	}
 
 	v.events = make(chan interfaces.UpdateEvent)

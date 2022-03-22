@@ -86,15 +86,15 @@ func WithDisplayCapturer(capturer CapturerType) Option {
 
 		switch capturer {
 		case DXGI:
-			a.displayRepository, err = dxgi.New()
+			a.Displays, err = dxgi.New()
 			if err != nil {
 				return err
 			}
 		case BitBlt:
-			a.displayRepository = bitblt.New()
+			a.Displays = bitblt.New()
 
 		case Scrap:
-			a.displayRepository, err = scrap.New()
+			a.Displays, err = scrap.New()
 			if err != nil {
 				return err
 			}

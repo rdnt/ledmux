@@ -8,12 +8,13 @@ import (
 )
 
 type Config struct {
-	name         string
-	format       string
-	DefaultMode  string    `yaml:"defaultMode" json:"defaultMode"`
-	CapturerType string    `yaml:"capturerType" json:"capturerType"`
-	Server       Server    `yaml:"server" json:"server"`
-	Displays     []Display `yaml:"displays" json:"displays"`
+	name        string
+	format      string
+	DefaultMode string      `yaml:"defaultMode" json:"defaultMode"`
+	CaptureType string      `yaml:"captureType" json:"captureType"`
+	Server      Server      `yaml:"server" json:"server"`
+	Displays    [][]Display `yaml:"displays" json:"displays"`
+	Segments    []Segment   `yaml:"segments" json:"segments"`
 }
 
 type Server struct {
@@ -29,6 +30,8 @@ type Server struct {
 type Display struct {
 	Width     int    `yaml:"width" json:"width"`
 	Height    int    `yaml:"height" json:"height"`
+	Left      int    `yaml:"left" json:"left"`
+	Top       int    `yaml:"top" json:"top"`
 	Leds      int    `yaml:"leds" json:"leds"`
 	Bounds    Bounds `yaml:"bounds" json:"bounds"`
 	Framerate int    `yaml:"framerate" json:"framerate"`
@@ -44,6 +47,11 @@ type Bounds struct {
 type Vector2 struct {
 	X int `yaml:"x" json:"x"`
 	Y int `yaml:"y" json:"y"`
+}
+
+type Segment struct {
+	Id   int `yaml:"id" json:"id"`
+	Leds int `yaml:"leds" json:"leds"`
 }
 
 func (c *Config) Save() error {
@@ -118,8 +126,8 @@ func Load() (*Config, error) {
 
 func createDefault() (*Config, error) {
 	c := Config{
-		DefaultMode:  "ambilight",
-		CapturerType: "bitblt",
+		DefaultMode: "ambilight",
+		CaptureType: "bitblt",
 		Server: Server{
 			Host:       "0.0.0.0",
 			Port:       4197,
@@ -129,15 +137,19 @@ func createDefault() (*Config, error) {
 			Brightness: 255,
 			BlackPoint: 0,
 		},
-		Displays: []Display{
+		Displays: [][]Display{
 			{
-				Leds:      100,
-				Width:     1920,
-				Height:    1080,
-				Framerate: 60,
-				Bounds: Bounds{
-					From: Vector2{X: 0, Y: 0},
-					To:   Vector2{X: 0, Y: 0},
+				{
+					Leds:      100,
+					Width:     1920,
+					Height:    1080,
+					Left:      0,
+					Top:       0,
+					Framerate: 60,
+					Bounds: Bounds{
+						From: Vector2{X: 0, Y: 0},
+						To:   Vector2{X: 0, Y: 0},
+					},
 				},
 			},
 		},

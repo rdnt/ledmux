@@ -217,4 +217,6 @@ func (ctl *Controller) HandleAmbilightEvent(b []byte) {
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	fmt.Print(evt.SegmentId)
 }

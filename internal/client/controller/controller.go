@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"github.com/vmihailenco/msgpack/v5"
 	"ledctl3/internal/client/interfaces"
 	"ledctl3/internal/pkg/events"
@@ -31,17 +32,17 @@ func New(opts ...Option) (*Controller, error) {
 	return s, nil
 }
 
-func (s *Controller) Start() error {
+func (ctl *Controller) Start() error {
 	return nil
 }
 
-func (s *Controller) Events() chan []byte {
-	return s.events
+func (ctl *Controller) Events() chan []byte {
+	return ctl.events
 }
 
-func (s *Controller) Stop() error {
-	if s.visualizer != nil {
-		return s.visualizer.Stop()
+func (ctl *Controller) Stop() error {
+	if ctl.visualizer != nil {
+		return ctl.visualizer.Stop()
 	}
 
 	return nil
@@ -67,15 +68,15 @@ var Modes = map[string]Mode{
 	"static":    Static,
 }
 
-func (s *Controller) SetMode(mode Mode) error {
-	if mode == s.mode {
-		return nil
+func (ctl *Controller) SetMode(mode Mode) error {
+	if mode == ctl.mode {
+		return fmt.Errorf("invalid mode")
 	}
 
-	s.mode = mode
+	ctl.mode = mode
 
-	if s.visualizer != nil {
-		err := s.visualizer.Stop()
+	if ctl.visualizer != nil {
+		err := ctl.visualizer.Stop()
 		if err != nil {
 			return err
 		}
@@ -83,33 +84,29 @@ func (s *Controller) SetMode(mode Mode) error {
 
 	switch mode {
 	case Ambilight:
-		s.visualizer = s.displayVisualizer
+		ctl.visualizer = ctl.displayVisualizer
 	case AudioViz:
-		s.visualizer = s.audioVisualizer
+		ctl.visualizer = ctl.audioVisualizer
 	case Rainbow, Static:
-		s.visualizer = nil
+		ctl.visualizer = nil
 	}
 
-	if s.visualizer != nil {
-		err := s.visualizer.Start()
+	if ctl.visualizer != nil {
+		err := ctl.visualizer.Start()
 		if err != nil {
 			return err
 		}
 
 		go func() {
-			for evt := range s.visualizer.Events() {
-				//if evt.Display.Id() == 1 {
-				//	continue
-				//}
-				// TODO: associate display with strip here
-				e := events.NewAmbilightEvent(evt.Display.Id(), evt.Data)
+			for evt := range ctl.visualizer.Events() {
+				e := events.NewAmbilightEvent(evt.SegmentId, evt.Data)
 
 				b, err := msgpack.Marshal(e)
 				if err != nil {
 					panic(err)
 				}
 
-				s.events <- b
+				ctl.events <- b
 			}
 		}()
 	}

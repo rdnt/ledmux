@@ -18,6 +18,9 @@ func main() {
 	b2 := make([]byte, 99*4)
 
 	msgs := server.Receive()
+
+	fmt.Println("start")
+	
 	for msg := range msgs {
 		var e events.AmbilightEvent
 

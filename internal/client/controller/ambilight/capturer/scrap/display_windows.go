@@ -13,7 +13,6 @@ import (
 var ErrNoFrame = fmt.Errorf("no frame")
 
 type display struct {
-	index    int
 	id       int
 	width    int
 	height   int
@@ -77,7 +76,7 @@ func (d *display) reset() error {
 	d.capturer = nil
 	runtime.GC()
 
-	sd, err := goscrap.GetDisplay(d.index)
+	sd, err := goscrap.GetDisplay(d.id)
 	if err != nil {
 		return err
 	}

@@ -20,9 +20,9 @@ func WithDisplayRepository(displays interfaces.DisplayRepository) Option {
 	}
 }
 
-func WithDisplayConfig(cfg []DisplayConfig) Option {
+func WithDisplayConfig(cfg [][]DisplayConfig) Option {
 	return func(p *Visualizer) error {
-		p.displayCfg = cfg
+		p.displayConfigs = cfg
 		return nil
 	}
 }

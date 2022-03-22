@@ -2,17 +2,14 @@ package client
 
 import (
 	"fmt"
-	"github.com/vmihailenco/msgpack/v5"
 	"ledctl3/internal/client/controller"
 	"ledctl3/internal/client/controller/ambilight"
 	"ledctl3/internal/client/interfaces"
-	"ledctl3/internal/pkg/events"
 	"ledctl3/pkg/udp"
 )
 
 type App struct {
 	DefaultMode controller.Mode
-	BlackPoint  int
 
 	Host       string
 	Port       int
@@ -20,8 +17,12 @@ type App struct {
 	StripType  StripType
 	GpioPin    int
 	Brightness int
+	BlackPoint int
+	Segments   []Segment
+	conn       udp.Client
 
-	Displays []ambilight.DisplayConfig
+	Displays       interfaces.DisplayRepository
+	DisplayConfigs [][]ambilight.DisplayConfig
 
 	//cfg config.Config
 	//ip       string
@@ -29,11 +30,16 @@ type App struct {
 	//mode     string
 	//capturer string
 
-	ctl               *controller.Controller
-	conn              udp.Client
-	displayRepository interfaces.DisplayRepository
-	displayVisualizer interfaces.Visualizer
-	audioVisualizer   interfaces.Visualizer
+	ctl *controller.Controller
+	//displayVisualizer interfaces.Visualizer
+	//audioVisualizer   interfaces.Visualizer
+}
+
+type Server struct {
+}
+
+type Segment struct {
+	Leds int
 }
 
 func New(opts ...Option) (*App, error) {
@@ -52,10 +58,10 @@ func New(opts ...Option) (*App, error) {
 		return nil, err
 	}
 
-	a.displayVisualizer, err = ambilight.New(
+	displayVisualizer, err := ambilight.New(
 		ambilight.WithLedsCount(a.Leds),
-		ambilight.WithDisplayRepository(a.displayRepository),
-		ambilight.WithDisplayConfig(a.Displays),
+		ambilight.WithDisplayRepository(a.Displays),
+		ambilight.WithDisplayConfig(a.DisplayConfigs), // TODO @@@@
 	)
 	if err != nil {
 		return nil, err
@@ -63,8 +69,8 @@ func New(opts ...Option) (*App, error) {
 
 	a.ctl, err = controller.New(
 		controller.WithLedsCount(a.Leds),
-		controller.WithDisplayVisualizer(a.displayVisualizer),
-		controller.WithAudioVisualizer(a.audioVisualizer),
+		controller.WithDisplayVisualizer(displayVisualizer),
+		controller.WithAudioVisualizer(nil),
 	)
 	if err != nil {
 		return nil, err
@@ -83,30 +89,40 @@ func New(opts ...Option) (*App, error) {
 }
 
 func (a *App) Start() error {
-	segments := []events.Segment{}
-
-	for _, d := range a.Displays {
-		segments = append(
-			segments, events.Segment{
-				Id:   d.Id,
-				Leds: d.Leds,
-			},
-		)
-	}
-
-	e := events.NewReloadEvent(a.Leds, string(a.StripType), a.GpioPin, a.Brightness, segments)
-
-	b, err := msgpack.Marshal(e)
+	err := a.reload()
 	if err != nil {
 		panic(err)
 	}
 
-	err = a.conn.Send(b)
-	if err != nil {
-		fmt.Println(err)
-	}
-
 	return a.ctl.SetMode(a.DefaultMode)
+}
+
+func (a *App) reload() error {
+	//segments := []events.Segment{}
+
+	// TODO: pass proper matched config
+	//for _, d := range a.DisplayConfigs[0] {
+	//	segments = append(
+	//		segments, events.Segment{
+	//			Id:   d.Id,
+	//			Leds: d.Leds,
+	//		},
+	//	)
+	//}
+
+	//e := events.NewReloadEvent(a.Leds, string(a.StripType), a.GpioPin, a.Brightness, segments)
+	//
+	//b, err := msgpack.Marshal(e)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//err = a.conn.Send(b)
+	//if err != nil {
+	//	return err
+	//}
+
+	return nil
 }
 
 func (a *App) Stop() error {

@@ -63,7 +63,7 @@ func (a *App) validateConfig(c config.Config) error {
 		return fmt.Errorf("invalid default mode")
 	}
 
-	_, ok = capturerTypes[c.CapturerType]
+	_, ok = capturerTypes[c.CaptureType]
 	if !ok {
 		return fmt.Errorf("invalid capturer type")
 	}
@@ -73,7 +73,7 @@ func (a *App) validateConfig(c config.Config) error {
 		return err
 	}
 
-	err = a.validateDisplays(c.Displays)
+	err = a.validateDisplayConfigs(c.Displays)
 	if err != nil {
 		return err
 	}
@@ -111,32 +111,34 @@ func (a *App) validateServer(srv config.Server) error {
 	return nil
 }
 
-func (a *App) validateDisplays(displays []config.Display) error {
-	for i, d := range displays {
-		if d.Leds < 1 || d.Leds > 1024 {
-			return fmt.Errorf("invalid LED count for display %d", i)
-		}
+func (a *App) validateDisplayConfigs(displayConfigs [][]config.Display) error {
+	for _, cfg := range displayConfigs {
+		for i, d := range cfg {
+			if d.Leds < 1 || d.Leds > 1024 {
+				return fmt.Errorf("invalid LED count for display %d", i)
+			}
 
-		if d.Width < 1 || d.Width > 7680 {
-			return fmt.Errorf("invalid width for display %d", i)
-		}
+			if d.Width < 1 || d.Width > 7680 {
+				return fmt.Errorf("invalid width for display %d", i)
+			}
 
-		if d.Height < 1 || d.Height > 4320 {
-			return fmt.Errorf("invalid width for display %d", i)
-		}
+			if d.Height < 1 || d.Height > 4320 {
+				return fmt.Errorf("invalid width for display %d", i)
+			}
 
-		if d.Framerate <= 0 {
-			return fmt.Errorf("invalid framerate for display %d", i)
-		}
+			if d.Framerate <= 0 {
+				return fmt.Errorf("invalid framerate for display %d", i)
+			}
 
-		v1 := validateBounds(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
-		if !v1 {
-			return fmt.Errorf("invalid bounds for display %d (from)", i)
-		}
+			v1 := validateBounds(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
+			if !v1 {
+				return fmt.Errorf("invalid bounds for display %d (from)", i)
+			}
 
-		v2 := validateBounds(d.Width, d.Height, d.Bounds.To.X, d.Bounds.To.Y)
-		if !v2 {
-			return fmt.Errorf("invalid bounds for display %d (to)", i)
+			v2 := validateBounds(d.Width, d.Height, d.Bounds.To.X, d.Bounds.To.Y)
+			if !v2 {
+				return fmt.Errorf("invalid bounds for display %d (to)", i)
+			}
 		}
 	}
 
@@ -144,16 +146,16 @@ func (a *App) validateDisplays(displays []config.Display) error {
 }
 
 func (a *App) applyConfig(c config.Config) (err error) {
-	switch CapturerType(c.CapturerType) {
+	switch CapturerType(c.CaptureType) {
 	case DXGI:
-		a.displayRepository, err = dxgi.New()
+		a.Displays, err = dxgi.New()
 		if err != nil {
 			return err
 		}
 	case BitBlt:
-		a.displayRepository = bitblt.New()
+		a.Displays = bitblt.New()
 	case Scrap:
-		a.displayRepository, err = scrap.New()
+		a.Displays, err = scrap.New()
 		if err != nil {
 			return err
 		}
@@ -167,24 +169,31 @@ func (a *App) applyConfig(c config.Config) (err error) {
 	a.GpioPin = c.Server.GpioPin
 	a.Brightness = c.Server.Brightness
 
-	for i, d := range c.Displays {
-		fromOffset := calculateOffset(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
-		toOffset := calculateOffset(d.Width, d.Height, d.Bounds.To.X, d.Bounds.To.Y)
+	for _, cfg := range c.Displays {
+		parsedCfg := []ambilight.DisplayConfig{}
 
-		size := getPixSliceSize(d.Width, d.Height, fromOffset, toOffset)
+		for i, d := range cfg {
+			fromOffset := calculateOffset(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
+			toOffset := calculateOffset(d.Width, d.Height, d.Bounds.To.X, d.Bounds.To.Y)
 
-		a.Displays = append(
-			a.Displays,
-			ambilight.DisplayConfig{
-				Id:           i,
-				Width:        d.Width,
-				Height:       d.Height,
-				Leds:         d.Leds,
-				Framerate:    d.Framerate,
-				BoundsOffset: fromOffset,
-				BoundsSize:   size,
-			},
-		)
+			size := getPixSliceSize(d.Width, d.Height, fromOffset, toOffset)
+
+			parsedCfg = append(
+				parsedCfg, ambilight.DisplayConfig{
+					Id:           i,
+					Width:        d.Width,
+					Height:       d.Height,
+					Left:         d.Left,
+					Top:          d.Top,
+					Leds:         d.Leds,
+					Framerate:    d.Framerate,
+					BoundsOffset: fromOffset,
+					BoundsSize:   size,
+				},
+			)
+		}
+
+		a.DisplayConfigs = append(a.DisplayConfigs, parsedCfg)
 	}
 
 	return nil
