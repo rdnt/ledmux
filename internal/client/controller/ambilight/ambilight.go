@@ -107,29 +107,6 @@ func (v *Visualizer) Start() error {
 }
 
 func (v *Visualizer) process(d interfaces.Display, cfg DisplayConfig, pix []byte) {
-
-	//if d.Id() != 0 {
-	//	return
-	//}
-
-	//if d.Id() >= len(v.displayCfg) {
-	//	// skip as this display is not in the config
-	//	return
-	//}
-
-	//if cfg.Width != d.Width() || cfg.Height != d.Height() {
-	//	// skip as this is an invalid config for this display
-	//	fmt.Println("invalid config", d.Id())
-	//	return
-	//}
-
-	//fmt.Println("process", d)
-
-	//// bounds are per-display
-	//boundsOffset := 5860
-	////boundsOffset := 0
-	//boundsSize := 2560*2 + 1440*2 // whole screen
-
 	pix = getEdges(pix, d.Width(), d.Height())
 	// TODO: do this outside this package
 	pix = getBounds(pix, cfg.BoundsOffset*4, cfg.BoundsSize*4)
@@ -204,11 +181,14 @@ func averagePix(src []byte, ledsCount int) []byte {
 
 }
 
-func getBounds(edg []byte, offset, size int) []byte {
-	newBounds := make([]byte, size) // 3 times the size (R G B bytes)
+// getBounds filters the given edge
+func getBounds(edgePix []byte, offset, size int) []byte {
+	newBounds := make([]byte, size)
+
 	for i := 0; i < size; i++ {
-		newBounds[i] = edg[(i+offset)%len(edg)]
+		newBounds[i] = edgePix[(i+offset)%len(edgePix)]
 	}
+
 	return newBounds
 }
 
