@@ -108,16 +108,18 @@ func (a *App) validateServer(srv config.Server) error {
 		return fmt.Errorf("invalid server brightness")
 	}
 
+	for _, seg := range srv.Segments {
+		if seg.Leds < 1 || seg.Leds > 1024 {
+			return fmt.Errorf("invalid LED count for segment %d", seg.Id)
+		}
+	}
+
 	return nil
 }
 
 func (a *App) validateDisplayConfigs(displayConfigs [][]config.Display) error {
 	for _, cfg := range displayConfigs {
 		for i, d := range cfg {
-			if d.Leds < 1 || d.Leds > 1024 {
-				return fmt.Errorf("invalid LED count for display %d", i)
-			}
-
 			if d.Width < 1 || d.Width > 7680 {
 				return fmt.Errorf("invalid width for display %d", i)
 			}
@@ -169,23 +171,45 @@ func (a *App) applyConfig(c config.Config) (err error) {
 	a.GpioPin = c.Server.GpioPin
 	a.Brightness = c.Server.Brightness
 
-	for _, cfg := range c.Displays {
+	a.Segments = []Segment{}
+	for _, s := range c.Server.Segments {
+		a.Segments = append(
+			a.Segments, Segment{
+				Id:   s.Id,
+				Leds: s.Leds,
+			},
+		)
+	}
+
+	for i, cfg := range c.Displays {
 		parsedCfg := []ambilight.DisplayConfig{}
 
-		for i, d := range cfg {
+		for j, d := range cfg {
 			fromOffset := calculateOffset(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
 			toOffset := calculateOffset(d.Width, d.Height, d.Bounds.To.X, d.Bounds.To.Y)
 
 			size := getPixSliceSize(d.Width, d.Height, fromOffset, toOffset)
 
+			leds := 0
+			for _, seg := range a.Segments {
+				if seg.Id == d.Segment {
+					leds = seg.Leds
+				}
+			}
+
+			if leds == 0 {
+				return fmt.Errorf("segment not found for display %d of config %d", j, i)
+			}
+
 			parsedCfg = append(
 				parsedCfg, ambilight.DisplayConfig{
-					Id:           i,
+					Id:           j,
+					SegmentId:    d.Segment,
+					Leds:         leds,
 					Width:        d.Width,
 					Height:       d.Height,
 					Left:         d.Left,
 					Top:          d.Top,
-					Leds:         d.Leds,
 					Framerate:    d.Framerate,
 					BoundsOffset: fromOffset,
 					BoundsSize:   size,

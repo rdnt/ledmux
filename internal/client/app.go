@@ -2,9 +2,11 @@ package client
 
 import (
 	"fmt"
+	"github.com/vmihailenco/msgpack/v5"
 	"ledctl3/internal/client/controller"
 	"ledctl3/internal/client/controller/ambilight"
 	"ledctl3/internal/client/interfaces"
+	"ledctl3/internal/pkg/events"
 	"ledctl3/pkg/udp"
 )
 
@@ -35,10 +37,8 @@ type App struct {
 	//audioVisualizer   interfaces.Visualizer
 }
 
-type Server struct {
-}
-
 type Segment struct {
+	Id   int
 	Leds int
 }
 
@@ -98,29 +98,28 @@ func (a *App) Start() error {
 }
 
 func (a *App) reload() error {
-	//segments := []events.Segment{}
+	segments := []events.Segment{}
 
-	// TODO: pass proper matched config
-	//for _, d := range a.DisplayConfigs[0] {
-	//	segments = append(
-	//		segments, events.Segment{
-	//			Id:   d.Id,
-	//			Leds: d.Leds,
-	//		},
-	//	)
-	//}
+	for _, s := range a.Segments {
+		segments = append(
+			segments, events.Segment{
+				Id:   s.Id,
+				Leds: s.Leds,
+			},
+		)
+	}
 
-	//e := events.NewReloadEvent(a.Leds, string(a.StripType), a.GpioPin, a.Brightness, segments)
-	//
-	//b, err := msgpack.Marshal(e)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//err = a.conn.Send(b)
-	//if err != nil {
-	//	return err
-	//}
+	e := events.NewReloadEvent(a.Leds, string(a.StripType), a.GpioPin, a.Brightness, segments)
+
+	b, err := msgpack.Marshal(e)
+	if err != nil {
+		return err
+	}
+
+	err = a.conn.Send(b)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

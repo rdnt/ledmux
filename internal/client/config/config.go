@@ -14,25 +14,25 @@ type Config struct {
 	CaptureType string      `yaml:"captureType" json:"captureType"`
 	Server      Server      `yaml:"server" json:"server"`
 	Displays    [][]Display `yaml:"displays" json:"displays"`
-	Segments    []Segment   `yaml:"segments" json:"segments"`
 }
 
 type Server struct {
-	Host       string `yaml:"host" json:"host"`
-	Port       int    `yaml:"port" json:"port"`
-	Leds       int    `yaml:"leds" json:"leds"`
-	StripType  string `yaml:"stripType" json:"stripType"`
-	GpioPin    int    `yaml:"gpioPin" json:"gpioPin"`
-	Brightness int    `yaml:"brightness" json:"brightness"`
-	BlackPoint int    `json:"blackPoint" yaml:"blackPoint"`
+	Host       string    `yaml:"host" json:"host"`
+	Port       int       `yaml:"port" json:"port"`
+	Leds       int       `yaml:"leds" json:"leds"`
+	StripType  string    `yaml:"stripType" json:"stripType"`
+	GpioPin    int       `yaml:"gpioPin" json:"gpioPin"`
+	Brightness int       `yaml:"brightness" json:"brightness"`
+	BlackPoint int       `yaml:"blackPoint" json:"blackPoint"`
+	Segments   []Segment `yaml:"segments" json:"segments"`
 }
 
 type Display struct {
+	Segment   int    `yaml:"segment" json:"segment"`
 	Width     int    `yaml:"width" json:"width"`
 	Height    int    `yaml:"height" json:"height"`
 	Left      int    `yaml:"left" json:"left"`
 	Top       int    `yaml:"top" json:"top"`
-	Leds      int    `yaml:"leds" json:"leds"`
 	Bounds    Bounds `yaml:"bounds" json:"bounds"`
 	Framerate int    `yaml:"framerate" json:"framerate"`
 }
@@ -136,11 +136,17 @@ func createDefault() (*Config, error) {
 			GpioPin:    18,
 			Brightness: 255,
 			BlackPoint: 0,
+			Segments: []Segment{
+				{
+					Id:   0,
+					Leds: 100,
+				},
+			},
 		},
 		Displays: [][]Display{
 			{
 				{
-					Leds:      100,
+					Segment:   0,
 					Width:     1920,
 					Height:    1080,
 					Left:      0,

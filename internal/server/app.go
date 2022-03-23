@@ -91,12 +91,13 @@ func New() (*Controller, error) {
 //}
 
 func (ctl *Controller) Route(e events.Event, b []byte) {
-
 	switch e.Type {
 	case events.Ambilight:
 		ctl.HandleAmbilightEvent(b)
 	case events.Reload:
 		ctl.HandleReloadEvent(b)
+	default:
+		fmt.Println("unknown event")
 	}
 }
 

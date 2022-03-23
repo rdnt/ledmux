@@ -1,6 +1,6 @@
 #!/bin/bash
 
-go mod vendor -v
+#go mod vendor -v
 
 docker run \
     -it \

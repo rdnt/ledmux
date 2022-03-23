@@ -19,11 +19,12 @@ type Visualizer struct {
 
 type DisplayConfig struct {
 	Id           int
+	SegmentId    int
+	Leds         int
 	Width        int
 	Height       int
 	Left         int
 	Top          int
-	Leds         int
 	Framerate    int
 	BoundsOffset int
 	BoundsSize   int
@@ -31,8 +32,8 @@ type DisplayConfig struct {
 
 func (d DisplayConfig) String() string {
 	return fmt.Sprintf(
-		"DisplayConfig{id: %d, width: %d, height: %d, left: %d, top: %d, leds: %d, framerate: %d, offset: %d, size: %d}", d.Id, d.Width, d.Height, d.Left, d.Top, d.Leds, d.Framerate, d.BoundsOffset,
-		d.BoundsSize,
+		"DisplayConfig{id: %d, segmentId: %d, leds: %d, width: %d, height: %d, left: %d, top: %d, framerate: %d, offset: %d, size: %d}",
+		d.Id, d.SegmentId, d.Leds, d.Width, d.Height, d.Left, d.Top, d.Framerate, d.BoundsOffset, d.BoundsSize,
 	)
 }
 
@@ -51,6 +52,7 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 
 	displayConfigs, err := v.MatchDisplays(displays)
 	if err != nil {
+		fmt.Println(displays)
 		return err
 	}
 
@@ -115,7 +117,7 @@ func (v *Visualizer) process(d interfaces.Display, cfg DisplayConfig, pix []byte
 	pix = adjustWhitePoint(pix, 16, 256)
 
 	v.events <- interfaces.UpdateEvent{
-		SegmentId: d.Id(),
+		SegmentId: cfg.SegmentId,
 		Data:      pix,
 	}
 }
