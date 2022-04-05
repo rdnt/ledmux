@@ -2,19 +2,26 @@ package ambilight
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"ledctl3/internal/client/interfaces"
 	"sync"
 	"time"
 )
 
+var (
+	ErrConfigNotFound = fmt.Errorf("config not found")
+)
+
 type Visualizer struct {
-	displays       interfaces.DisplayRepository
+	displayRepo    DisplayRepository
 	leds           int
 	cancel         context.CancelFunc
 	done           chan bool
 	events         chan interfaces.UpdateEvent
 	displayConfigs [][]DisplayConfig
+
+	displays []Display
 }
 
 type DisplayConfig struct {
@@ -45,25 +52,24 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	captureCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	displays, err := v.displays.All()
+	var err error
+	v.displays, err = v.displayRepo.All()
 	if err != nil {
 		return err
 	}
 
-	displayConfigs, err := v.MatchDisplays(displays)
+	displayConfigs, err := v.matchDisplays(v.displays)
 	if err != nil {
-		fmt.Println(displays)
 		return err
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(len(displays))
+	wg.Add(len(v.displays))
 
-	for _, d := range displays {
+	for _, d := range v.displays {
 		cfg := displayConfigs[d.Id()]
-		fmt.Println(d, cfg)
 
-		go func(d interfaces.Display) {
+		go func(d Display) {
 			defer wg.Done()
 			frames := d.Capture(captureCtx, cfg.Framerate)
 
@@ -95,12 +101,19 @@ func (v *Visualizer) Start() error {
 				return
 			default:
 				fmt.Println("STARTING CAPTURE")
-				err := v.startCapture(ctx)
-				if err != nil {
-					fmt.Println("error starting capture:", err)
-				}
 
-				time.Sleep(3 * time.Second)
+				err := v.startCapture(ctx)
+				if errors.Is(err, context.Canceled) {
+					fmt.Println("capture canceled")
+
+					v.stopCapture()
+					return
+				} else if err != nil {
+					fmt.Println("error starting capture:", err)
+
+					v.stopCapture()
+					time.Sleep(3 * time.Second)
+				}
 			}
 		}
 	}()
@@ -108,7 +121,18 @@ func (v *Visualizer) Start() error {
 	return nil
 }
 
-func (v *Visualizer) process(d interfaces.Display, cfg DisplayConfig, pix []byte) {
+func (v *Visualizer) stopCapture() {
+	for _, d := range v.displays {
+		err := d.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+
+	v.displays = nil
+}
+
+func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 	pix = getEdges(pix, d.Width(), d.Height())
 	// TODO: do this outside this package
 	pix = getBounds(pix, cfg.BoundsOffset*4, cfg.BoundsSize*4)
@@ -285,13 +309,16 @@ func (v *Visualizer) initialize() error {
 	return nil
 }
 
-// MatchDisplays tries to map a display entry from the system to one in the
+// matchDisplays tries to map a display entry from the system to one in the
 // config file. It should be re-run whenever the config file changes or a
 // display capturer becomes invalid, for example if an app enters fullscreen or
 // when a display is (dis)connected.
-func (v *Visualizer) MatchDisplays(displays []interfaces.Display) (map[int]DisplayConfig, error) {
+func (v *Visualizer) matchDisplays(displays []Display) (map[int]DisplayConfig, error) {
 	// try to find matching configuration
 	var match map[int]DisplayConfig
+
+	fmt.Println("displays", displays)
+	fmt.Println("configs", v.displayConfigs)
 
 	for _, cfg := range v.displayConfigs {
 		sys2cfg := map[int]int{}
@@ -336,7 +363,7 @@ func (v *Visualizer) MatchDisplays(displays []interfaces.Display) (map[int]Displ
 	}
 
 	if match == nil {
-		return nil, fmt.Errorf("no valid config found")
+		return nil, ErrConfigNotFound
 	}
 
 	return match, nil
@@ -352,7 +379,7 @@ func New(opts ...Option) (*Visualizer, error) {
 		}
 	}
 
-	if v.displays == nil {
+	if v.displayRepo == nil {
 		return nil, fmt.Errorf("invalid display repository")
 	}
 

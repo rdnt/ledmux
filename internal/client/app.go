@@ -5,7 +5,6 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 	"ledctl3/internal/client/controller"
 	"ledctl3/internal/client/controller/ambilight"
-	"ledctl3/internal/client/interfaces"
 	"ledctl3/internal/pkg/events"
 	"ledctl3/pkg/udp"
 )
@@ -23,7 +22,7 @@ type App struct {
 	Segments   []Segment
 	conn       udp.Client
 
-	Displays       interfaces.DisplayRepository
+	Displays       ambilight.DisplayRepository
 	DisplayConfigs [][]ambilight.DisplayConfig
 
 	//cfg config.Config

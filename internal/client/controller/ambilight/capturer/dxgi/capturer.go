@@ -3,23 +3,22 @@ package dxgi
 import (
 	"fmt"
 	"github.com/kbinani/screenshot"
-	"golang.org/x/image/draw"
 	"image"
-	"ledctl3/internal/client/interfaces"
+	"ledctl3/internal/client/controller/ambilight"
 )
 
 var scaleFactor = 8
 
 type dxgiCapturer struct {
-	displays []interfaces.Display
+	displays []ambilight.Display
 }
 
-func (c *dxgiCapturer) All() ([]interfaces.Display, error) {
-	ds := []interfaces.Display{}
+func (c *dxgiCapturer) All() ([]ambilight.Display, error) {
+	ds := []ambilight.Display{}
 
 	count := screenshot.NumActiveDisplays()
 	for i := 0; i < count; i++ {
-		bounds := screenshot.GetDisplayBounds(1 - i) // TODO: fix weird displays order
+		bounds := screenshot.GetDisplayBounds(i)
 
 		d := &display{
 			id:     i,
@@ -27,10 +26,7 @@ func (c *dxgiCapturer) All() ([]interfaces.Display, error) {
 			height: bounds.Dy(),
 			x:      bounds.Min.X,
 			y:      bounds.Min.Y,
-			scaler: draw.BiLinear.NewScaler(
-				bounds.Dx(), bounds.Dy(), bounds.Dx()/scaleFactor, bounds.Dy()/scaleFactor,
-			),
-			buf: image.NewRGBA(bounds),
+			buf:    image.NewRGBA(bounds),
 		}
 
 		err := d.reset()

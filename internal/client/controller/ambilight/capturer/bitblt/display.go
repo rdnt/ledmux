@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/kbinani/screenshot"
-	"golang.org/x/image/draw"
 	"time"
 )
 
@@ -14,11 +13,6 @@ type display struct {
 	height int
 	x      int
 	y      int
-	scaler draw.Scaler
-}
-
-func (d *display) SyncCapture(ctx context.Context, frames chan []byte, framerate int) {
-	panic("implement me")
 }
 
 func (d *display) Id() int {
@@ -41,25 +35,12 @@ func (d *display) Y() int {
 	return d.y
 }
 
-func (d *display) Scaler() draw.Scaler {
-	return d.scaler
-}
-
 func (d *display) Resolution() string {
 	return fmt.Sprintf("%dx%d", d.width, d.height)
 }
 
 func (d *display) String() string {
 	return fmt.Sprintf("{id: %d, width: %d, height: %d, left: %d, top: %d}", d.id, d.width, d.height, d.x, d.y)
-}
-
-func (d *display) nextFrame() ([]byte, error) {
-	img, err := screenshot.Capture(d.x, d.y, d.width, d.height)
-	if err != nil {
-		return nil, err
-	}
-
-	return img.Pix, nil
 }
 
 func (d *display) Capture(ctx context.Context, framerate int) chan []byte {
@@ -89,4 +70,17 @@ func (d *display) Capture(ctx context.Context, framerate int) chan []byte {
 	}()
 
 	return frames
+}
+
+func (d *display) nextFrame() ([]byte, error) {
+	img, err := screenshot.Capture(d.x, d.y, d.width, d.height)
+	if err != nil {
+		return nil, err
+	}
+
+	return img.Pix, nil
+}
+
+func (d *display) Close() error {
+	return nil
 }

@@ -2,18 +2,17 @@ package scrap
 
 import (
 	"github.com/kbinani/screenshot"
-	"golang.org/x/image/draw"
-	"ledctl3/internal/client/interfaces"
+	"ledctl3/internal/client/controller/ambilight"
 )
 
 var scaleFactor = 8
 
 type dxgiCapturer struct {
-	displays []interfaces.Display
+	displays []ambilight.Display
 }
 
-func (c *dxgiCapturer) All() ([]interfaces.Display, error) {
-	ds := []interfaces.Display{}
+func (c *dxgiCapturer) All() ([]ambilight.Display, error) {
+	ds := []ambilight.Display{}
 
 	count := screenshot.NumActiveDisplays()
 	for i := 0; i < count; i++ {
@@ -25,9 +24,6 @@ func (c *dxgiCapturer) All() ([]interfaces.Display, error) {
 			height: bounds.Dy(),
 			x:      bounds.Min.X,
 			y:      bounds.Min.Y,
-			scaler: draw.BiLinear.NewScaler(
-				bounds.Dx(), bounds.Dy(), bounds.Dx()/scaleFactor, bounds.Dy()/scaleFactor,
-			),
 		}
 
 		err := d.reset()

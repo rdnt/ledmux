@@ -3,7 +3,6 @@ package dxgi
 import (
 	"context"
 	"fmt"
-	"golang.org/x/image/draw"
 	"image"
 )
 
@@ -14,7 +13,6 @@ type display struct {
 	height int
 	x      int
 	y      int
-	scaler draw.Scaler
 	buf    *image.RGBA
 }
 
@@ -38,10 +36,6 @@ func (d *display) Y() int {
 	return d.y
 }
 
-func (d *display) Scaler() draw.Scaler {
-	return d.scaler
-}
-
 func (d *display) Resolution() string {
 	return fmt.Sprintf("%dx%d", d.width, d.height)
 }
@@ -54,8 +48,6 @@ func (d *display) Capture(ctx context.Context, framerate int) chan []byte {
 	return nil
 }
 
-func (d *display) reset() error {
+func (d *display) Close() error {
 	return nil
 }
-
-func (d *display) SyncCapture(ctx context.Context, frames chan []byte) {}

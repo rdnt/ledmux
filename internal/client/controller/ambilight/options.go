@@ -1,9 +1,5 @@
 package ambilight
 
-import (
-	"ledctl3/internal/client/interfaces"
-)
-
 type Option func(p *Visualizer) error
 
 func WithLedsCount(leds int) Option {
@@ -13,9 +9,9 @@ func WithLedsCount(leds int) Option {
 	}
 }
 
-func WithDisplayRepository(displays interfaces.DisplayRepository) Option {
+func WithDisplayRepository(displays DisplayRepository) Option {
 	return func(p *Visualizer) error {
-		p.displays = displays
+		p.displayRepo = displays
 		return nil
 	}
 }

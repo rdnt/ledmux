@@ -1,4 +1,4 @@
-FROM debian:buster AS lib_builder
+FROM debian:bullseye AS lib_builder
 
 WORKDIR /foundry
 
@@ -16,7 +16,7 @@ RUN git clone https://github.com/jgarff/rpi_ws281x.git \
   && make install
 
 
-FROM golang:buster
+FROM golang:bullseye
 COPY --from=lib_builder /usr/local/lib/libws2811.a /usr/local/lib/
 COPY --from=lib_builder /usr/local/include/ws2811 /usr/local/include/ws2811
 

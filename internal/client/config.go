@@ -8,7 +8,6 @@ import (
 	"ledctl3/internal/client/controller/ambilight/capturer/bitblt"
 	"ledctl3/internal/client/controller/ambilight/capturer/dxgi"
 	"ledctl3/internal/client/controller/ambilight/capturer/scrap"
-	"net"
 )
 
 type CapturerType string
@@ -82,10 +81,10 @@ func (a *App) validateConfig(c config.Config) error {
 }
 
 func (a *App) validateServer(srv config.Server) error {
-	ip := net.ParseIP(srv.Host)
-	if ip == nil {
-		return fmt.Errorf("invalid server IP")
-	}
+	//ip := net.ParseIP(srv.Host)
+	//if ip == nil {
+	//	return fmt.Errorf("invalid server IP")
+	//}
 
 	if srv.Port < 1 || srv.Port > 65535 {
 		return fmt.Errorf("invalid server port")

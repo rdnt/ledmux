@@ -1,26 +1,21 @@
 package interfaces
 
-import (
-	"context"
-	"golang.org/x/image/draw"
-)
-
-type DisplayRepository interface {
-	All() ([]Display, error)
-}
-
-type Display interface {
-	Id() int
-	Width() int
-	Height() int
-	X() int
-	Y() int
-	Scaler() draw.Scaler
-	Resolution() string
-	String() string
-	Capture(ctx context.Context, framerate int) chan []byte
-	SyncCapture(ctx context.Context, frames chan []byte, framerate int)
-}
+//type DisplayRepository interface {
+//	All() ([]Display, error)
+//}
+//
+//type Display interface {
+//	Id() int
+//	Width() int
+//	Height() int
+//	X() int
+//	Y() int
+//	Scaler() draw.Scaler
+//	Resolution() string
+//	String() string
+//	Capture(ctx context.Context, framerate int) chan []byte
+//	SyncCapture(ctx context.Context, frames chan []byte, framerate int)
+//}
 
 type AudioSource interface {
 	Transformer() Visualizer

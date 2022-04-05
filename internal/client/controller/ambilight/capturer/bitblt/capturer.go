@@ -2,18 +2,17 @@ package bitblt
 
 import (
 	"github.com/kbinani/screenshot"
-	"golang.org/x/image/draw"
-	"ledctl3/internal/client/interfaces"
+	"ledctl3/internal/client/controller/ambilight"
 )
 
 var scaleFactor = 8
 
 type bitbltCapturer struct {
-	displays []interfaces.Display
+	displays []*display
 }
 
-func (c *bitbltCapturer) All() ([]interfaces.Display, error) {
-	ds := []interfaces.Display{}
+func (c *bitbltCapturer) All() ([]ambilight.Display, error) {
+	ds := []ambilight.Display{}
 
 	count := screenshot.NumActiveDisplays()
 	for i := 0; i < count; i++ {
@@ -26,9 +25,6 @@ func (c *bitbltCapturer) All() ([]interfaces.Display, error) {
 				height: bounds.Dy(),
 				x:      bounds.Min.X,
 				y:      bounds.Min.Y,
-				scaler: draw.BiLinear.NewScaler(
-					bounds.Dx(), bounds.Dy(), bounds.Dx()/scaleFactor, bounds.Dy()/scaleFactor,
-				),
 			},
 		)
 	}
