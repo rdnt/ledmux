@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+
 	"ledctl3/internal/client/config"
 	"ledctl3/internal/client/controller"
 	"ledctl3/internal/client/controller/ambilight"
@@ -67,7 +68,12 @@ func (a *App) validateConfig(c config.Config) error {
 		return fmt.Errorf("invalid capturer type")
 	}
 
-	err := a.validateServer(c.Server)
+	err := a.validateSegments(c.Segments)
+	if err != nil {
+		return err
+	}
+
+	err = a.validateServer(c.Server)
 	if err != nil {
 		return err
 	}
@@ -75,6 +81,16 @@ func (a *App) validateConfig(c config.Config) error {
 	err = a.validateDisplayConfigs(c.Displays)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (a *App) validateSegments(segs []config.Segment) error {
+	for _, seg := range segs {
+		if seg.Leds < 1 || seg.Leds > 1024 {
+			return fmt.Errorf("invalid LED count for segment %d", seg.Id)
+		}
 	}
 
 	return nil
@@ -105,12 +121,6 @@ func (a *App) validateServer(srv config.Server) error {
 
 	if srv.Brightness < 0 || srv.Brightness > 255 {
 		return fmt.Errorf("invalid server brightness")
-	}
-
-	for _, seg := range srv.Segments {
-		if seg.Leds < 1 || seg.Leds > 1024 {
-			return fmt.Errorf("invalid LED count for segment %d", seg.Id)
-		}
 	}
 
 	return nil
@@ -171,7 +181,7 @@ func (a *App) applyConfig(c config.Config) (err error) {
 	a.Brightness = c.Server.Brightness
 
 	a.Segments = []Segment{}
-	for _, s := range c.Server.Segments {
+	for _, s := range c.Segments {
 		a.Segments = append(
 			a.Segments, Segment{
 				Id:   s.Id,
@@ -212,6 +222,7 @@ func (a *App) applyConfig(c config.Config) (err error) {
 					Framerate:    d.Framerate,
 					BoundsOffset: fromOffset,
 					BoundsSize:   size,
+					Bounds:       d.Bounds,
 				},
 			)
 		}

@@ -2,11 +2,15 @@ package client
 
 import (
 	"fmt"
+	"time"
+
+	"github.com/gorilla/websocket"
 	"github.com/vmihailenco/msgpack/v5"
+
 	"ledctl3/internal/client/controller"
 	"ledctl3/internal/client/controller/ambilight"
+	"ledctl3/internal/client/controller/audioviz"
 	"ledctl3/internal/pkg/events"
-	"ledctl3/pkg/udp"
 )
 
 type App struct {
@@ -20,7 +24,7 @@ type App struct {
 	Brightness int
 	BlackPoint int
 	Segments   []Segment
-	conn       udp.Client
+	conn       *websocket.Conn
 
 	Displays       ambilight.DisplayRepository
 	DisplayConfigs [][]ambilight.DisplayConfig
@@ -52,7 +56,10 @@ func New(opts ...Option) (*App, error) {
 	}
 
 	var err error
-	a.conn, err = udp.NewClient(fmt.Sprintf("%s:%d", a.Host, a.Port))
+	addr := fmt.Sprintf("ws://%s:%d/ws", a.Host, a.Port)
+	fmt.Println(addr)
+
+	a.conn, _, err = websocket.DefaultDialer.Dial(addr, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -66,10 +73,25 @@ func New(opts ...Option) (*App, error) {
 		return nil, err
 	}
 
+	segs := []audioviz.Segment{}
+	for _, seg := range a.Segments {
+		segs = append(segs, audioviz.Segment{
+			Id:   seg.Id,
+			Leds: seg.Leds,
+		})
+	}
+
+	audioVisualizer, err := audioviz.New(
+		audioviz.WithLedsCount(a.Leds),
+		audioviz.WithSegments(segs),
+	)
+
 	a.ctl, err = controller.New(
 		controller.WithLedsCount(a.Leds),
 		controller.WithDisplayVisualizer(displayVisualizer),
-		controller.WithAudioVisualizer(nil),
+		controller.WithAudioVisualizer(audioVisualizer),
+
+		controller.WithSegmentsCount(len(segs)),
 	)
 	if err != nil {
 		return nil, err
@@ -77,7 +99,7 @@ func New(opts ...Option) (*App, error) {
 
 	go func() {
 		for b := range a.ctl.Events() {
-			err = a.conn.Send(b)
+			err := a.conn.WriteMessage(websocket.BinaryMessage, b)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -97,11 +119,12 @@ func (a *App) Start() error {
 }
 
 func (a *App) reload() error {
-	segments := []events.Segment{}
+	time.Sleep(1 * time.Second)
+	segments := []events.SegmentConfig{}
 
 	for _, s := range a.Segments {
 		segments = append(
-			segments, events.Segment{
+			segments, events.SegmentConfig{
 				Id:   s.Id,
 				Leds: s.Leds,
 			},
@@ -115,7 +138,7 @@ func (a *App) reload() error {
 		return err
 	}
 
-	err = a.conn.Send(b)
+	err = a.conn.WriteMessage(websocket.BinaryMessage, b)
 	if err != nil {
 		return err
 	}
@@ -124,5 +147,7 @@ func (a *App) reload() error {
 }
 
 func (a *App) Stop() error {
+	a.conn.Close()
+
 	return a.ctl.SetMode(controller.Reset)
 }

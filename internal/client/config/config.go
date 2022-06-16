@@ -3,8 +3,9 @@ package config
 import (
 	"bytes"
 	"encoding/json"
-	"gopkg.in/yaml.v3"
 	"os"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
@@ -14,17 +15,17 @@ type Config struct {
 	CaptureType string      `yaml:"captureType" json:"captureType"`
 	Server      Server      `yaml:"server" json:"server"`
 	Displays    [][]Display `yaml:"displays" json:"displays"`
+	Segments    []Segment   `yaml:"segments" json:"segments"`
 }
 
 type Server struct {
-	Host       string    `yaml:"host" json:"host"`
-	Port       int       `yaml:"port" json:"port"`
-	Leds       int       `yaml:"leds" json:"leds"`
-	StripType  string    `yaml:"stripType" json:"stripType"`
-	GpioPin    int       `yaml:"gpioPin" json:"gpioPin"`
-	Brightness int       `yaml:"brightness" json:"brightness"`
-	BlackPoint int       `yaml:"blackPoint" json:"blackPoint"`
-	Segments   []Segment `yaml:"segments" json:"segments"`
+	Host       string `yaml:"host" json:"host"`
+	Port       int    `yaml:"port" json:"port"`
+	Leds       int    `yaml:"leds" json:"leds"`
+	StripType  string `yaml:"stripType" json:"stripType"`
+	GpioPin    int    `yaml:"gpioPin" json:"gpioPin"`
+	Brightness int    `yaml:"brightness" json:"brightness"`
+	BlackPoint int    `yaml:"blackPoint" json:"blackPoint"`
 }
 
 type Display struct {
@@ -38,10 +39,8 @@ type Display struct {
 }
 
 type Bounds struct {
-	From   Vector2 `yaml:"from" json:"from"`
-	To     Vector2 `yaml:"to" json:"to"`
-	Offset int     `yaml:"-" json:"-"`
-	Size   int     `yaml:"-" json:"-"`
+	From Vector2 `yaml:"from" json:"from"`
+	To   Vector2 `yaml:"to" json:"to"`
 }
 
 type Vector2 struct {
@@ -136,11 +135,11 @@ func createDefault() (*Config, error) {
 			GpioPin:    18,
 			Brightness: 255,
 			BlackPoint: 0,
-			Segments: []Segment{
-				{
-					Id:   0,
-					Leds: 100,
-				},
+		},
+		Segments: []Segment{
+			{
+				Id:   0,
+				Leds: 100,
 			},
 		},
 		Displays: [][]Display{

@@ -26,3 +26,10 @@ func WithAudioVisualizer(visualizer interfaces.Visualizer) Option {
 		return nil
 	}
 }
+
+func WithSegmentsCount(count int) Option {
+	return func(ctl *Controller) error {
+		ctl.segmentCount = count
+		return nil
+	}
+}

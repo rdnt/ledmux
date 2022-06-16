@@ -30,8 +30,12 @@ type Visualizer interface {
 }
 
 type UpdateEvent struct {
-	SegmentId int
-	Data      []byte
+	Segments []Segment
+}
+
+type Segment struct {
+	Id  int
+	Pix []byte
 }
 
 type Updater interface {

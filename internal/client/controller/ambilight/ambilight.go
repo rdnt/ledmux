@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"ledctl3/internal/client/interfaces"
 	"sync"
 	"time"
+
+	"ledctl3/internal/client/config"
+	"ledctl3/internal/client/interfaces"
 )
 
 var (
@@ -35,12 +37,23 @@ type DisplayConfig struct {
 	Framerate    int
 	BoundsOffset int
 	BoundsSize   int
+	Bounds       config.Bounds
+}
+
+type Bounds struct {
+	From Vector2 `yaml:"from" json:"from"`
+	To   Vector2 `yaml:"to" json:"to"`
+}
+
+type Vector2 struct {
+	X int `yaml:"x" json:"x"`
+	Y int `yaml:"y" json:"y"`
 }
 
 func (d DisplayConfig) String() string {
 	return fmt.Sprintf(
-		"DisplayConfig{id: %d, segmentId: %d, leds: %d, width: %d, height: %d, left: %d, top: %d, framerate: %d, offset: %d, size: %d}",
-		d.Id, d.SegmentId, d.Leds, d.Width, d.Height, d.Left, d.Top, d.Framerate, d.BoundsOffset, d.BoundsSize,
+		"DisplayConfig{id: %d, segmentId: %d, leds: %d, width: %d, height: %d, left: %d, top: %d, framerate: %d, offset: %d, size: %d, bounds: %+v}",
+		d.Id, d.SegmentId, d.Leds, d.Width, d.Height, d.Left, d.Top, d.Framerate, d.BoundsOffset, d.BoundsSize, d.Bounds,
 	)
 }
 
@@ -68,6 +81,12 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 
 	for _, d := range v.displays {
 		cfg := displayConfigs[d.Id()]
+
+		fmt.Println("########################################")
+		fmt.Println(d.Id())
+		fmt.Println(d)
+		fmt.Println(cfg)
+		fmt.Println("########################################")
 
 		go func(d Display) {
 			defer wg.Done()
@@ -133,16 +152,22 @@ func (v *Visualizer) stopCapture() {
 }
 
 func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
-	pix = getEdges(pix, d.Width(), d.Height())
-	// TODO: do this outside this package
-	pix = getBounds(pix, cfg.BoundsOffset*4, cfg.BoundsSize*4)
+	//fmt.Println("process:", d.Id())
+	//fmt.Println(d)
+	//fmt.Println(cfg)
 
+	pix = getEdges(pix, d.Width(), d.Height())
+	pix = getBounds(pix, cfg.BoundsOffset*4, cfg.BoundsSize*4)
 	pix = averagePix(pix, cfg.Leds)
-	pix = adjustWhitePoint(pix, 16, 256)
+	pix = adjustWhitePoint(pix, 0, 256)
 
 	v.events <- interfaces.UpdateEvent{
-		SegmentId: cfg.SegmentId,
-		Data:      pix,
+		Segments: []interfaces.Segment{
+			{
+				Id:  cfg.SegmentId,
+				Pix: pix,
+			},
+		},
 	}
 }
 
@@ -366,6 +391,8 @@ func (v *Visualizer) matchDisplays(displays []Display) (map[int]DisplayConfig, e
 		return nil, ErrConfigNotFound
 	}
 
+	fmt.Println("match", match)
+
 	return match, nil
 }
 
@@ -387,6 +414,10 @@ func New(opts ...Option) (*Visualizer, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println("@@@@@@@@@@@@@@")
+	fmt.Println(v.displayConfigs)
+	fmt.Println("@@@@@@@@@@@@@@")
 
 	v.events = make(chan interfaces.UpdateEvent)
 

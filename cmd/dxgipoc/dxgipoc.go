@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"ledctl3/internal/client/controller/ambilight/capturer/dxgi"
-	"ledctl3/internal/client/interfaces"
 	"os"
 	"os/signal"
 	"time"
+
+	"ledctl3/internal/client/controller/ambilight"
+	"ledctl3/internal/client/controller/ambilight/capturer/dxgi"
 )
 
 func main() {
@@ -49,11 +49,13 @@ func main() {
 	}
 
 	for _, d := range displays {
-		frames := d.Capture(ctx, 60)
+		frames := d.Capture(ctx, 1)
 
-		go func(d interfaces.Display) {
+		go func(d ambilight.Display) {
 			for range frames {
-				fmt.Print(d.Id())
+				if d.Id() == 0 {
+					os.Exit(0)
+				}
 			}
 		}(d)
 	}

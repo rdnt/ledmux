@@ -3,11 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/kbinani/screenshot"
-	"github.com/kirides/screencapture/d3d"
 	"image"
 	"image/png"
 	"os"
+
+	"github.com/kbinani/screenshot"
+
+	"github.com/kirides/screencapture/d3d"
 )
 
 func main() {
@@ -32,7 +34,7 @@ func main() {
 
 	// Create image that can contain the wanted output (desktop)
 	finalBounds := screenshot.GetDisplayBounds(n)
-	imgBuf := image.NewRGBA(finalBounds)
+	imgBuf := image.NewNRGBA(finalBounds)
 	lastBounds := finalBounds
 
 	for {
@@ -40,7 +42,7 @@ func main() {
 		newBounds := image.Rect(0, 0, int(bounds.Dx()), int(bounds.Dy()))
 		if newBounds != lastBounds {
 			lastBounds = newBounds
-			imgBuf = image.NewRGBA(lastBounds)
+			imgBuf = image.NewNRGBA(lastBounds)
 
 			// Throw away old ddup
 			if ddup != nil {

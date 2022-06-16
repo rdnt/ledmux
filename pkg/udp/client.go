@@ -1,7 +1,9 @@
 package udp
 
 import (
+	"fmt"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -10,6 +12,7 @@ type Client interface {
 }
 
 type client struct {
+	mux     sync.Mutex
 	conn    *net.UDPConn
 	address string
 }
@@ -18,6 +21,10 @@ func (c *client) Send(b []byte) error {
 	if c.conn == nil {
 		return nil
 	}
+
+	c.mux.Lock()
+	//defer time.Sleep(1 * time.Millisecond)
+	defer c.mux.Unlock()
 
 	_, err := c.conn.Write(b)
 	if err != nil {
@@ -73,5 +80,6 @@ func (c *client) connect() error {
 	}
 
 	c.conn = conn
+	fmt.Println("resolved")
 	return nil
 }

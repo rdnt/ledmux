@@ -2,7 +2,9 @@ package controller
 
 import (
 	"fmt"
+
 	"github.com/vmihailenco/msgpack/v5"
+
 	"ledctl3/internal/client/interfaces"
 	"ledctl3/internal/pkg/events"
 )
@@ -15,6 +17,7 @@ type Controller struct {
 
 	displayVisualizer interfaces.Visualizer
 	audioVisualizer   interfaces.Visualizer
+	segmentCount      int
 }
 
 func New(opts ...Option) (*Controller, error) {
@@ -27,7 +30,7 @@ func New(opts ...Option) (*Controller, error) {
 		}
 	}
 
-	s.events = make(chan []byte)
+	s.events = make(chan []byte, s.segmentCount)
 
 	return s, nil
 }
@@ -51,21 +54,21 @@ func (ctl *Controller) Stop() error {
 type Mode string
 
 const (
-	Reset     Mode = "reset"
-	Reload    Mode = "reload"
-	Ambilight Mode = "ambilight"
-	AudioViz  Mode = "audioviz"
-	Rainbow   Mode = "rainbow"
-	Static    Mode = "static"
+	Reset   Mode = "reset"
+	Reload  Mode = "reload"
+	Video   Mode = "video"
+	Audio   Mode = "audio"
+	Rainbow Mode = "rainbow"
+	Static  Mode = "static"
 )
 
 var Modes = map[string]Mode{
-	"reset":     Reset,
-	"reload":    Reload,
-	"ambilight": Ambilight,
-	"audioviz":  AudioViz,
-	"rainbow":   Rainbow,
-	"static":    Static,
+	"reset":   Reset,
+	"reload":  Reload,
+	"video":   Video,
+	"audio":   Audio,
+	"rainbow": Rainbow,
+	"static":  Static,
 }
 
 func (ctl *Controller) SetMode(mode Mode) error {
@@ -83,9 +86,9 @@ func (ctl *Controller) SetMode(mode Mode) error {
 	}
 
 	switch mode {
-	case Ambilight:
+	case Video:
 		ctl.visualizer = ctl.displayVisualizer
-	case AudioViz:
+	case Audio:
 		ctl.visualizer = ctl.audioVisualizer
 	case Rainbow, Static:
 		ctl.visualizer = nil
@@ -99,7 +102,16 @@ func (ctl *Controller) SetMode(mode Mode) error {
 
 		go func() {
 			for evt := range ctl.visualizer.Events() {
-				e := events.NewAmbilightEvent(evt.SegmentId, evt.Data)
+				segs := []events.Segment{}
+
+				for _, seg := range evt.Segments {
+					segs = append(segs, events.Segment{
+						Id:  seg.Id,
+						Pix: seg.Pix,
+					})
+				}
+				//fmt.Println(evt.Data)
+				e := events.NewAmbilightEvent(segs)
 
 				b, err := msgpack.Marshal(e)
 				if err != nil {

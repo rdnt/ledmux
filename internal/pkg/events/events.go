@@ -16,35 +16,39 @@ type Event struct {
 
 type AmbilightEvent struct {
 	Event
-	SegmentId int    `msgpack:"segmentId"`
-	Data      []byte `msgpack:"data"`
+
+	Segments []Segment `msgpack:"segments"`
 }
 
-func NewAmbilightEvent(segmentId int, b []byte) AmbilightEvent {
+type Segment struct {
+	Id  int    `msgpack:"id"`
+	Pix []byte `msgpack:"pix"`
+}
+
+func NewAmbilightEvent(segs []Segment) AmbilightEvent {
 	return AmbilightEvent{
 		Event: Event{
 			Type: Ambilight,
 		},
-		SegmentId: segmentId,
-		Data:      b,
+		Segments: segs,
 	}
 }
 
 type ReloadEvent struct {
 	Event
-	Leds       int       `msgpack:"leds"`
-	StripType  string    `msgpack:"stripType"`
-	GpioPin    int       `msgpack:"gpioPin"`
-	Brightness int       `msgpack:"brightness"`
-	Segments   []Segment `msgpack:"segments"`
+	Leds       int             `msgpack:"leds"`
+	StripType  string          `msgpack:"stripType"`
+	GpioPin    int             `msgpack:"gpioPin"`
+	Brightness int             `msgpack:"brightness"`
+	Segments   []SegmentConfig `msgpack:"segments"`
 }
 
-type Segment struct {
+type SegmentConfig struct {
 	Id   int `msgpack:"id"`
 	Leds int `msgpack:"leds"`
 }
 
-func NewReloadEvent(leds int, stripType string, gpioPin, brightness int, segments []Segment) ReloadEvent {
+func NewReloadEvent(leds int, stripType string, gpioPin, brightness int, segments []SegmentConfig) ReloadEvent {
 	return ReloadEvent{
 		Event: Event{
 			Type: Reload,

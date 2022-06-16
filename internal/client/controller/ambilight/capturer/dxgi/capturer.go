@@ -2,8 +2,10 @@ package dxgi
 
 import (
 	"fmt"
-	"github.com/kbinani/screenshot"
 	"image"
+
+	"github.com/kbinani/screenshot"
+
 	"ledctl3/internal/client/controller/ambilight"
 )
 
@@ -18,15 +20,8 @@ func (c *dxgiCapturer) All() ([]ambilight.Display, error) {
 
 	count := screenshot.NumActiveDisplays()
 	for i := 0; i < count; i++ {
-		bounds := screenshot.GetDisplayBounds(i)
-
 		d := &display{
-			id:     i,
-			width:  bounds.Dx(),
-			height: bounds.Dy(),
-			x:      bounds.Min.X,
-			y:      bounds.Min.Y,
-			buf:    image.NewRGBA(bounds),
+			id: i,
 		}
 
 		err := d.reset()
@@ -34,6 +29,21 @@ func (c *dxgiCapturer) All() ([]ambilight.Display, error) {
 			fmt.Println("failed to reset display from All", i, err)
 			continue
 		}
+
+		bounds := d.ddup.Bounds()
+		//
+		d.width = bounds.Dx()
+		d.height = bounds.Dy()
+		d.x = bounds.Min.X
+		d.y = bounds.Min.Y
+
+		//bounds = image.Rect(0, 0, 2560, 1440)
+		//d.width = 2560
+		//d.height = 1440
+		//d.x = 0
+		//d.y = 0
+
+		d.buf = image.NewNRGBA(bounds)
 
 		ds = append(ds, d)
 	}

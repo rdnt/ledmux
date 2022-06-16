@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/kirides/screencapture/d3d"
 	"image"
 	"time"
+
+	"github.com/kirides/screencapture/d3d"
 )
 
 var ErrNoFrame = fmt.Errorf("no frame")
@@ -18,7 +19,7 @@ type display struct {
 	height int
 	x      int
 	y      int
-	buf    *image.RGBA
+	buf    *image.NRGBA
 	dev    *d3d.ID3D11Device
 	devCtx *d3d.ID3D11DeviceContext
 	ddup   *d3d.OutputDuplicator

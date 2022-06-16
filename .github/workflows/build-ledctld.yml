@@ -1,0 +1,59 @@
+name: Build ledctld
+on:
+  push:
+jobs:
+  build-ledctld:
+    name: Build ledctld
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ 1.17 ]
+    steps:
+
+      - name: Checkout code
+        id: checkout-code
+        uses: actions/checkout@v2
+
+#      - name: Cache go modules
+#        id: cache-go-modules
+#        uses: actions/cache@v2
+#        with:
+#          path: ~/go/pkg/mod
+#          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+#          restore-keys: ${{ runner.os }}-go-
+
+      - name: Install Go ${{ matrix.go-version }}
+        id: install-go
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Download go modules
+        id: download-gomodules
+        run: go mod download
+
+      - name: Build client
+        id: build-client
+        run: go build -o build/client ./cmd/client
+
+      - name: Build container image
+        id: build-container-image
+        run: docker build -t registry.digitalocean.com/rdnt/myst:$(echo $GITHUB_SHA | head -c7) -t registry.digitalocean.com/rdnt/myst:latest .
+
+      - name: Install doctl
+        id: install-doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Log in to DigitalOcean Container Registry with short-lived credentials
+        id: registry-login
+        run: doctl registry login --expiry-seconds 600
+
+      - name: Push image
+        id: push-image
+        run: docker push registry.digitalocean.com/rdnt/myst:$(echo $GITHUB_SHA | head -c7) && docker push registry.digitalocean.com/rdnt/myst:latest
+
+      - name: Create application deployment
+        id: create-deployment
+        run: doctl apps create-deployment ${{ secrets.DIGITALOCEAN_APP_ID }}

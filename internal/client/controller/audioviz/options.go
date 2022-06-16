@@ -1,9 +1,5 @@
 package audioviz
 
-import (
-	"ledctl3/internal/client/interfaces"
-)
-
 type Option func(p *Visualizer) error
 
 func WithLedsCount(leds int) Option {
@@ -13,9 +9,24 @@ func WithLedsCount(leds int) Option {
 	}
 }
 
-func WithAudioSource(source interfaces.AudioSource) Option {
+func WithSegments(segs []Segment) Option {
 	return func(p *Visualizer) error {
-		p.source = source
+		p.maxLedCount = 0
+		
+		for _, seg := range segs {
+			if seg.Leds > p.maxLedCount {
+				p.maxLedCount = seg.Leds
+			}
+		}
+
+		p.segments = segs
 		return nil
 	}
 }
+
+//func WithAudioSource(source interfaces.AudioSource) Option {
+//	return func(p *Visualizer) error {
+//		p.source = source
+//		return nil
+//	}
+//}
