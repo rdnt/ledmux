@@ -117,20 +117,36 @@ type Visualizer struct {
 	lastSourceName string
 	segments       []Segment
 	maxLedCount    int
-	config         Config
+
+	config Config
 }
 
 type Config struct {
-	Hue1 int
-	Hue2 int
-	Hue3 int
-	Hue4 int
+	Color1 colorful.Color
+	Color2 colorful.Color
+	Color3 colorful.Color
+	Color4 colorful.Color
+	Color5 colorful.Color
 }
 
 func (v *Visualizer) Start() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	v.cancel = cancel
 	v.done = make(chan bool)
+
+	c1, _ := colorful.Hex("#0B1A1E")
+	c2, _ := colorful.Hex("#507C85")
+	c3, _ := colorful.Hex("#689F9A")
+	c4, _ := colorful.Hex("#FF9B71")
+	c5, _ := colorful.Hex("#E84855")
+
+	v.config = Config{
+		Color1: c1,
+		Color2: c2,
+		Color3: c3,
+		Color4: c4,
+		Color5: c5,
+	}
 
 	go func() {
 		for {
@@ -181,60 +197,6 @@ func (v *Visualizer) Stop() error {
 	return nil
 }
 
-//func (v *Visualizer) readStateChanges() error {
-//
-//	time.Sleep(10 * time.Minute)
-//
-//	fmt.Println("Done")
-//
-//	return nil
-//}
-
-var v2 *Visualizer
-
-func onDefaultDeviceChanged(flow wca.EDataFlow, role wca.ERole, pwstrDeviceId string) error {
-	fmt.Printf("Called OnDefaultDeviceChanged\t(%v, %v, %q)\n", flow, role, pwstrDeviceId)
-	//time.Sleep(1 * time.Second)
-
-	v2.childCancel()
-
-	time.Sleep(3 * time.Second)
-	fmt.Println("restart")
-
-	//err := v2.Stop()
-	//if err != nil {
-	//	fmt.Println(err)
-	//}
-	//err = v2.Start()
-	//if err != nil {
-	//	fmt.Println(err)
-	//}
-	return nil
-}
-
-func onDeviceAdded(pwstrDeviceId string) error {
-	fmt.Printf("Called OnDeviceAdded\t(%q)\n", pwstrDeviceId)
-
-	return nil
-}
-
-func onDeviceRemoved(pwstrDeviceId string) error {
-	fmt.Printf("Called OnDeviceRemoved\t(%q)\n", pwstrDeviceId)
-
-	return nil
-}
-
-func onDeviceStateChanged(pwstrDeviceId string, dwNewState uint64) error {
-	fmt.Printf("Called OnDeviceStateChanged\t(%q, %v)\n", pwstrDeviceId, dwNewState)
-
-	return nil
-}
-
-func onPropertyValueChanged(pwstrDeviceId string, key uint64) error {
-	fmt.Printf("Called OnPropertyValueChanged\t(%q, %v)\n", pwstrDeviceId, key)
-	return nil
-}
-
 func (v *Visualizer) startCapture(ctx context.Context) error {
 	if err := ole.CoInitializeEx(0, ole.COINIT_APARTMENTTHREADED); err != nil {
 		return err
@@ -246,18 +208,6 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 		return err
 	}
 	defer mmde.Release()
-
-	v2 = v
-
-	//callback := wca.IMMNotificationClientCallback{
-	//	OnDefaultDeviceChanged: onDefaultDeviceChanged,
-	//}
-	//
-	//mmnc := wca.NewIMMNotificationClient(callback)
-
-	//if err := mmde.RegisterEndpointNotificationCallback(mmnc); err != nil {
-	//	return errors.WithMessage(err, "failed to RegisterEndpointNotificationCallback readstate")
-	//}
 
 	var mmd *wca.IMMDevice
 	if err := mmde.GetDefaultAudioEndpoint(wca.ERender, wca.EConsole, &mmd); err != nil {
@@ -295,35 +245,6 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	}
 	defer ami.Release()
 
-	var fPeak float32
-	if err := ami.GetPeakValue(&fPeak); err != nil {
-		return err
-	}
-	fmt.Printf("Peak: %f\n", fPeak)
-
-	//go func() {
-	//	for {
-	//		time.Sleep(1 * time.Second)
-	//		if err := ami.GetPeakValue(&fPeak); err != nil {
-	//			fmt.Println(err)
-	//		}
-	//
-	//		fmt.Printf("Peak: %f\n", fPeak)
-	//	}
-	//}()
-
-	var fVolume float32
-	if err := vol.GetMasterVolumeLevelScalar(&fVolume); err != nil {
-		return err
-	}
-	fmt.Printf("Volume: %f\n", fVolume)
-
-	var chanVol float32
-	if err := vol.GetChannelVolumeLevelScalar(1, &fVolume); err != nil {
-		return err
-	}
-	fmt.Printf("Channel scalar volume: %f\n", chanVol)
-
 	var wfx *wca.WAVEFORMATEX
 	if err := ac.GetMixFormat(&wfx); err != nil {
 		return err
@@ -353,7 +274,11 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	fmt.Println("Minimum period: ", minimumPeriod)
 	fmt.Println("Latency: ", latency)
 
-	if err := ac.Initialize(wca.AUDCLNT_SHAREMODE_SHARED, wca.AUDCLNT_STREAMFLAGS_EVENTCALLBACK|wca.AUDCLNT_STREAMFLAGS_LOOPBACK, defaultPeriod, 0, wfx, nil); err != nil {
+	if err := ac.Initialize(
+		wca.AUDCLNT_SHAREMODE_SHARED,
+		wca.AUDCLNT_STREAMFLAGS_EVENTCALLBACK|wca.AUDCLNT_STREAMFLAGS_LOOPBACK,
+		defaultPeriod, 0, wfx, nil,
+	); err != nil {
 		return err
 	}
 
@@ -382,7 +307,6 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	fmt.Println("Start capturing with shared event driven mode")
 
 	var offset int
-	//var isCapturing = true
 	var b *byte
 	var data *byte
 	var availableFrameSize uint32
@@ -391,21 +315,6 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	var qcpPosition uint64
 
 	errorChan := make(chan error, 1)
-
-	//time.Sleep(latency)
-
-	//var padding uint32
-
-	//in := make(chan float32)
-	//out := make(chan float32)
-
-	//go bpm.ProgressivelyReadFloatArray(in, out)
-
-	//done := make(chan bool)
-
-	//go readProgressiveVars(out, done, *progressive, *progressiveInterval)
-
-	//var scores []float64
 
 	var isCapturing = true
 
@@ -427,10 +336,6 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 			if err != nil {
 				isCapturing = false
 				break
-			}
-
-			if err := ami.GetPeakValue(&fPeak); err != nil {
-				return errors.WithMessage(err, "failed to get peak")
 			}
 
 			if err = acc.GetBuffer(&data, &availableFrameSize, &flags, &devicePosition, &qcpPosition); err != nil {
@@ -459,11 +364,7 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 
 			offset += lim
 
-			//if offset%(lim*4) == 0 {
-			//	go v.processBuf(buf, float64(fPeak))
-			//}
-
-			go v.processBuf(buf, float64(fPeak), float64(wfx.NSamplesPerSec))
+			go v.processBuf(buf, float64(wfx.NSamplesPerSec))
 
 			if err = acc.ReleaseBuffer(availableFrameSize); err != nil {
 				return errors.WithMessage(err, "failed to ReleaseBuffer")
@@ -472,49 +373,7 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 
 	}
 
-	//for {
-	//
-	//	if !isCapturing {
-	//		break
-	//	}
-	//	select {
-	//	case <-ctx.Done():
-	//		isCapturing = false
-	//		break
-	//	default:
-	//		// Wait for buffering.
-	//		//time.Sleep(latency / 2)
-	//		if err := acc.GetBuffer(&data, &availableFrameSize, &flags, &devicePosition, &qcpPosition); err != nil {
-	//			continue
-	//		}
-	//		if availableFrameSize == 0 {
-	//			continue
-	//		}
-	//
-	//		start := unsafe.Pointer(data)
-	//		lim := int(availableFrameSize) * int(wfx.NBlockAlign)
-	//		buf := make([]byte, lim)
-	//
-	//		for n := 0; n < lim; n++ {
-	//			b = (*byte)(unsafe.Pointer(uintptr(start) + uintptr(n)))
-	//			buf[n] = *b
-	//		}
-	//
-	//		go v.processBuf(buf)
-	//
-	//		offset += lim
-	//
-	//		if err := acc.ReleaseBuffer(availableFrameSize); err != nil {
-	//			return err
-	//		}
-	//	}
-	//}
-
 	fmt.Println("stopping audio capture")
-
-	//if err := mmde.UnregisterEndpointNotificationCallback(mmnc); err != nil {
-	//	return errors.Wrap(err, "failed to unregister endpoint notification callback")
-	//}
 
 	if err := ac.Stop(); err != nil {
 		return errors.Wrap(err, "failed to stop audio client")
@@ -551,287 +410,94 @@ func eventEmitter(event uintptr) (err error) {
 	return
 }
 
-//func watchEvent(ctx context.Context, event uintptr) (err error) {
-//	errorChan := make(chan error, 1)
-//	go func() {
-//		errorChan <- eventEmitter(event)
-//	}()
-//	select {
-//	case err = <-errorChan:
-//		close(errorChan)
-//		return
-//	case <-ctx.Done():
-//		err = ctx.Err()
-//		return
-//	}
-//	return
-//}
-//
-//// this takes 10ms...
-//func eventEmitter(event uintptr) (err error) {
-//	//if err = ole.CoInitializeEx(0, ole.COINIT_MULTITHREADED); err != nil {
-//	//	return
-//	//}
-//	dw := wca.WaitForSingleObject(event, wca.INFINITE)
-//	if dw != 0 {
-//		return fmt.Errorf("failed to watch event")
-//	}
-//	//ole.CoUninitialize()
-//	return
-//}
-
-func (v *Visualizer) processBuf(buf []byte, peak float64, sampleRate float64) {
-	//els := make([]float64, len(buf)/4)
-	//sum := 0.0
-
-	els := make([]float64, len(buf)/4)
-	//sum := 0.0
-	//max := 0.0
-	//sum := 0.0
+func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
+	samples := make([]float64, len(buf)/4)
 	for i := 0; i < len(buf); i += 4 {
-		b := binary.LittleEndian.Uint32(buf[i : i+4])
-		bi := int32(b)
-		fbi := float64(bi)
-		//fbi = math.Abs(fbi)
-		//fbi /= 2
-		els = append(els, fbi)
-		//if math.Abs(fbi) > max {
-		//	max = math.Abs(fbi)
-		//}
-		//sum += fbi
-		//sum += math.Abs(fbi)
-		//fbi := float64(bi)
-		//els = append(els, float64(fbi))
-		//sum += math.Abs(fbi)
+		v := float64(int32(binary.LittleEndian.Uint32(buf[i : i+4])))
+
+		samples = append(samples, v)
 	}
 
-	//fmt.Println(els)
-	//max = max / float64(len(els)) / math.MaxInt16 / 8
-	//fmt.Print(max)
-
-	//if max < peak {
-	//	fmt.Println("max peak", max, peak)
-	//}
-
-	//avg := math.Pow(sum/float64(len(els))/math.MaxInt32*16, 2)
-	//avg := sum / float64(len(els)) / math.MaxInt32 * 8
-	//fmt.Print(avg)
-
-	//fmt.Println(els)
-	//avg := sum / float64(len(els))
-	//fmt.Println(int(avg))
-
-	//fmt.Println(avg / math.MaxInt32)
-
-	avg := 0.0
-	for _, el := range els {
-		avg += math.Abs(el)
+	signal := dsp.Signal{
+		SampleRate: samplesPerSec,
+		Signal:     samples,
 	}
 
-	//peak = math.Min(peak, 1)
-	avg = avg / float64(len(els)) / math.MaxInt32 * 8
-	//avg = math.Min(avg, 1)
-
-	//avg = math.Log2((avg+1)/2) + 1
-
-	//avg *= 2
-	//peak *= 2
-	//peak *= 2
-
-	avg = math.Min(avg, 1)
-	//max = math.Min(max, 1)
-	peak = math.Min(peak, 1)
-	//max *= 10
-
-	//max = math.Log2((max+1)/2) + 1
-	//max = math.Log2((max+1)/2) + 1
-	//max = math.Log2((max+1)/2) + 1
-	//max = math.Log2((max+1)/2) + 1
-	//max = math.Log2((max+1)/2) + 1
-
-	//max = math.Min(max, 1)
-
-	//peak = math.Log2((peak+1)/2) + 1
-
-	//nrg =
-
-	sig := dsp.Signal{
-		SampleRate: sampleRate,
-		Signal:     els,
-	}
-
-	//avg := 0.0
-	normalized, err := sig.Normalize()
+	normalized, err := signal.Normalize()
 	if err != nil {
-		//els = make([]float64, len(buf)/4)
-	} else {
-		//nrg := 0.0
-
-		spectrum, err := normalized.FrequencySpectrum()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		els = spectrum.Spectrum
+		return
 	}
 
-	pre := []float64{}
+	spectrum, err := normalized.FrequencySpectrum()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	pre = append(pre, els[0])
-	pre = append(pre, els[1])
-	pre = append(pre, els[1])
-	pre = append(pre, els[1])
-	pre = append(pre, els[2])
-	pre = append(pre, els[2])
-	pre = append(pre, els[2])
-	pre = append(pre, els[3])
-	pre = append(pre, els[3])
-	pre = append(pre, els[3])
-	pre = append(pre, els[4])
-	pre = append(pre, els[4])
-	pre = append(pre, els[5])
-	pre = append(pre, els[5])
+	freqs := spectrum.Spectrum
 
-	els = append(pre, els[6:]...)
+	lows := []float64{}
+
+	// make the low frequencies more prominent
+	lows = append(lows, freqs[0])
+	lows = append(lows, freqs[1])
+	lows = append(lows, freqs[1])
+	lows = append(lows, freqs[1])
+	lows = append(lows, freqs[2])
+	lows = append(lows, freqs[2])
+	lows = append(lows, freqs[2])
+	lows = append(lows, freqs[3])
+	lows = append(lows, freqs[3])
+	lows = append(lows, freqs[3])
+	lows = append(lows, freqs[4])
+	lows = append(lows, freqs[4])
+	lows = append(lows, freqs[5])
+	lows = append(lows, freqs[5])
+
+	freqs = append(lows, freqs[6:]...)
 
 	max := 0.0
-	for _, el := range els {
-		if math.Abs(el) > max {
-			max = math.Abs(el)
+	for _, freq := range freqs {
+		if math.Abs(freq) > max {
+			max = math.Abs(freq)
 		}
 	}
 
 	pix := []byte{}
-	//pix = append(pix, []byte{0, 0, 0, 0xFF}...)
-	//pix = append(pix, []byte{0, 0, 0, 0xFF}...)
-	//pix = append(pix, []byte{0, 0, 0, 0xFF}...)
-	//pix = append(pix, []byte{0, 0, 0, 0xFF}...)
-	//pix = append(pix, []byte{0, 0, 0, 0xFF}...)
-	//pix = append(pix, []byte{0, 0, 0, 0xFF}...)
 
-	//fmt.Print("\n")
-
-	//out := "\r"
-
-	//avg *= 2
-	//peak = math.Log2((peak+1)/2) + 1
-	//peak = 1
-	//avg = 1
-	//avg = math.Log10(avg)
-
-	next := 0.0
 	for i := 0; i < v.maxLedCount; i++ {
-		if i < len(els)-3 {
-			next = els[i] + els[i+1] + els[i+2]
+		var curr float64
+		// diffuse frequencies horizontally (just a little)
+		if i < len(freqs)-3 {
+			curr = freqs[i] + freqs[i+1] + freqs[i+2]
 		} else {
-			next = els[i] + els[i] + els[i]
+			curr = freqs[i] + freqs[i] + freqs[i]
 		}
-		curr := (next) / 3
-		//curr := els[i]
-
-		//curr *= 10
-		//curr = math.Log2((curr+1)/2) + 1
-		//curr = math.Log2((curr+1)/2) + 1
-		//curr = math.Log2((curr+1)/2) + 1
-		//curr = math.Log2((curr+1)/2) + 1
-		//curr = math.Log2((curr+1)/2) + 1
-		//curr = math.Log2((curr+1)/2) + 1
-		//curr = math.Log2((curr+1)/2) + 1
-		//curr = math.Log2((curr+1)/2) + 1
-
-		//curr = math.Log2((curr+1)/2) + 1
-		//curr = math.Log2((curr+1)/2) + 1
-		//mult := float64(i / v.leds / 2)
-		//offset := 250.0
-		//loop := float64(360)
-		//
-		//hsv := colorful.Hsv(math.Mod((max+peak)*360+offset, loop), max, curr)
+		curr = (curr) / 3
 
 		norm := normalize(curr, 0, max)
-		//h := curr * 360
-		var h float64
+
+		var c colorful.Color
 		if norm < 0.3 {
-			h = 260 // 20
-		} else if norm < 0.6 {
-			h = 300 // 300
-		} else if norm < 0.85 {
-			h = 180 // 0
+			c = v.config.Color1
+		} else if norm < 0.45 {
+			c = v.config.Color2
+		} else if norm < 0.8 {
+			c = v.config.Color3
+		} else if norm < 0.9 {
+			c = v.config.Color4
 		} else {
-			h = 30 // 20
+			c = v.config.Color5
 		}
-		//h := 200. + norm*120
 
-		h = math.Mod(h, 360)
-		//fmt.Printf("%.32f\n", h)
-
-		//s := math.Min((peak/3+0.66)/peak*2, 1)
-		//s := 1.
-		//s := math.Min(math.Abs((max+curr)*10), 1)
-		s := (0.5 + (norm * 0.5))
-		v := norm + 0.0
-		v = (log((v+1)/2, 2) + 1)
-		v *= (0.5 + peak*0.5)
-		v = v*0.85 + 0.15
-
-		//if max > .5 {
-		//	s = 0
-		//}
-
-		//v := math.Min((curr + max), 1)
-
-		hsv := colorful.Hsv(h, s, v)
-
-		//curr = math.Log2((curr+1)/2) + 1
-		//if avg > 0.9 {
-		//	fmt.Println("avg", avg)
-		//}
-		//r, g, b := uint8(avg*curr*128+15), uint8(avg*curr*32+15), uint8(avg*curr*256+15)
-		//rm := 1.0
-		//gm := 1.0
-		//bm := 1.0
-
-		//curr = math.Log2((curr+1)/2) + 1
-		//curr = math.Log2((curr+1)/2) + 1
-		//curr = math.Log2((curr+1)/2) + 1
-
-		//val := peak * curr * 256
-
-		//curr *= 2
-
-		//r, g, b := uint8(val), uint8(val*peak), uint8(val*peak)
-
-		r, g, b, _ := hsv.RGBA()
+		r, g, b, _ := c.RGBA()
 
 		r = uint32(math.Min(float64(r/256), 255))
 		g = uint32(math.Min(float64(g/256), 255))
 		b = uint32(math.Min(float64(b/256), 255))
 
-		//fmt.Println(r, g, b)
-		//if r > 150 {
-		//	r = 250
-		//}
-
-		//if r > max2 {
-		//	max2 = r
-		//}
-		//
-		//if g > max2 {
-		//	max2 = g
-		//}
-		//
-		//if b > max2 {
-		//	max2 = b
-		//}
-
 		pix = append(pix, []byte{uint8(r), uint8(g), uint8(b), 0xFF}...)
-		//pix = append(pix, []byte{uint8(r), uint8(g), uint8(b), 0xFF}...)
-
-		//out += color.RGB(uint8(r), uint8(g), uint8(b), true).Sprintf(" ")
 	}
-
-	//fmt.Print(out)
-	//fmt.Printf("%.4f  %.4f  %d  %.4f", avg, peak, max2, max)
 
 	pixs = append(pixs, pix)
 	if len(pixs) > 100 {
@@ -842,74 +508,27 @@ func (v *Visualizer) processBuf(buf []byte, peak float64, sampleRate float64) {
 	weightsTotal := 0.0
 
 	for i := 0; i < len(pixs); i++ {
-
 		w := float64((i + 1) * (i + 1))
-		//w := 1.0
-
 		weights = append(weights, w)
 		weightsTotal += w
 	}
-	//fmt.Println(weights)
 
 	pix2 := make([]float64, len(pix))
-	//fmt.Println("---", len(pixs))
 	for i, p2 := range pixs {
 		for j, p := range p2 {
-
-			//fmt.Println(pix2[j])
-			//fmt.Println(weights[i])
-
 			pix2[j] = pix2[j] + float64(p)*weights[i]
-			//pix2[j] = uint16(math.Max(float64(pix2[j]), float64(p)))
 		}
 	}
 
 	pix3 := make([]float64, len(pix))
 	for i, p := range pix2 {
 		avg := p / weightsTotal
-		//curr := p
 		pix3[i] = float64(avg)
-		//if i > 1 && i < len(pix2)-2 {
-		//	avg = uint16(float64(float64(pix2[i+1]+avg) / float64(2.0)))
-		//}
-		//pix[i] = uint8(avg)
 	}
-
-	pix4 := make([]uint8, len(pix))
-
-	for i := 0; i < len(pix3); i += 4 {
-		offset := i
-
-		if i >= len(pix3)/2 {
-			offset = len(pix3) - 4 - i
-		}
-
-		pix4[i] = uint8(pix3[offset])
-		pix4[i+1] = uint8(pix3[offset+1])
-		pix4[i+2] = uint8(pix3[offset+2])
-		pix4[i+3] = uint8(pix3[offset+3])
-
-		//for i, p := range pix3 {
-		//if i > 1 && i < len(pix3)-2 {
-		//	pix4[i] = uint8(float64(float64(pix3[i+1]+p) / float64(2.0)))
-		//} else {
-		//	pix4[i] = uint8(p)
-		//
-
-		//pix4[i] = uint8(p)
-
-	}
-
-	//out := "\n"
-	//for i := 0; i < len(pix); i += 4 {
-	//	out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
-	//}
-	//fmt.Print(out)
 
 	segs := []interfaces.Segment{}
 
 	for _, seg := range v.segments {
-
 		length := seg.Leds * 4
 		pix4 := make([]uint8, length)
 
@@ -924,16 +543,6 @@ func (v *Visualizer) processBuf(buf []byte, peak float64, sampleRate float64) {
 			pix4[i+1] = uint8(pix3[offset+1])
 			pix4[i+2] = uint8(pix3[offset+2])
 			pix4[i+3] = uint8(pix3[offset+3])
-
-			//for i, p := range pix3 {
-			//if i > 1 && i < len(pix3)-2 {
-			//	pix4[i] = uint8(float64(float64(pix3[i+1]+p) / float64(2.0)))
-			//} else {
-			//	pix4[i] = uint8(p)
-			//
-
-			//pix4[i] = uint8(p)
-
 		}
 
 		pix := pix4[:seg.Leds*4]
@@ -943,31 +552,18 @@ func (v *Visualizer) processBuf(buf []byte, peak float64, sampleRate float64) {
 			for i := 0; i < len(pix); i += 4 {
 				out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
 			}
-			//fmt.Print(out)
+			fmt.Print(out)
 		}
 
 		segs = append(segs, interfaces.Segment{
 			Id:  seg.Id,
 			Pix: pix,
 		})
-
-		//time.Sleep(100 * time.Nanosecond)
 	}
 
 	v.events <- interfaces.UpdateEvent{
 		Segments: segs,
 	}
-
-	//pix = pix[6*4:]
-
-	//v.events <- interfaces.UpdateEvent{
-	//	SegmentId: 1,
-	//	Data:      pix,
-	//}
-}
-
-func log(v float64, base float64) float64 {
-	return math.Log(v) / math.Log(base)
 }
 
 func normalize(val, min, max float64) float64 {
@@ -988,7 +584,7 @@ func New(opts ...Option) (*Visualizer, error) {
 		}
 	}
 
-	v.events = make(chan interfaces.UpdateEvent, len(v.segments))
+	v.events = make(chan interfaces.UpdateEvent, len(v.segments)*8)
 
 	return v, nil
 }
