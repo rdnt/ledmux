@@ -3,8 +3,11 @@ package bitblt
 import (
 	"context"
 	"fmt"
-	"github.com/kbinani/screenshot"
 	"time"
+
+	"github.com/kbinani/screenshot"
+
+	"ledctl3/internal/client/controller/ambilight"
 )
 
 type display struct {
@@ -37,6 +40,10 @@ func (d *display) Y() int {
 
 func (d *display) Resolution() string {
 	return fmt.Sprintf("%dx%d", d.width, d.height)
+}
+
+func (d *display) Orientation() ambilight.Orientation {
+	return ambilight.Landscape
 }
 
 func (d *display) String() string {

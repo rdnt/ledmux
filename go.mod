@@ -3,6 +3,7 @@ module ledctl3
 go 1.18
 
 require (
+	github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b
 	github.com/eripe970/go-dsp-utils v0.0.0-20220123162022-4563116e558a
 	github.com/go-ole/go-ole v1.2.6
 	github.com/google/uuid v1.2.0
@@ -23,7 +24,6 @@ require (
 )
 
 require (
-	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/gen2brain/shm v0.0.0-20210511105953-083dbc7d9d83 // indirect
 	github.com/goccmack/godsp v0.1.1 // indirect
 	github.com/goccmack/goutil v0.4.0 // indirect
@@ -33,7 +33,6 @@ require (
 	github.com/mjibson/go-dsp v0.0.0-20180508042940-11479a337f12 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
-	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 // indirect
 	golang.org/x/sys v0.0.0-20211031064116-611d5d643895 // indirect
 )
 

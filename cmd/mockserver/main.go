@@ -28,13 +28,13 @@ func main() {
 
 		err := msgpack.Unmarshal(msg, &e)
 		if err != nil {
-			panic(err)
+			continue
 		}
 
-		if e.SegmentId == 0 {
-			//b1 = e.Data
-		} else if e.SegmentId == 1 {
-			b2 = e.Data
+		if e.Segments[0].Id == 0 {
+			b2 = e.Segments[0].Pix
+		} else if e.Segments[0].Id == 1 {
+			b2 = e.Segments[0].Pix
 		}
 
 		//b := append(b1, b2...)

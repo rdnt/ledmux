@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"image"
+
+	"ledctl3/internal/client/controller/ambilight"
 )
 
 type display struct {
@@ -50,4 +52,8 @@ func (d *display) Capture(ctx context.Context, framerate int) chan []byte {
 
 func (d *display) Close() error {
 	return nil
+}
+
+func (d *display) Orientation() ambilight.Orientation {
+	return ambilight.Landscape
 }

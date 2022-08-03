@@ -117,6 +117,14 @@ type Visualizer struct {
 	lastSourceName string
 	segments       []Segment
 	maxLedCount    int
+	config         Config
+}
+
+type Config struct {
+	Hue1 int
+	Hue2 int
+	Hue3 int
+	Hue4 int
 }
 
 func (v *Visualizer) Start() error {
@@ -242,15 +250,11 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	v2 = v
 
 	//callback := wca.IMMNotificationClientCallback{
-	//	//OnDefaultDeviceChanged: onDefaultDeviceChanged,
-	//	//OnDeviceAdded:          onDeviceAdded,
-	//	//OnDeviceRemoved:        onDeviceRemoved,
-	//	//OnDeviceStateChanged:   onDeviceStateChanged,
-	//	//OnPropertyValueChanged: onPropertyValueChanged,
+	//	OnDefaultDeviceChanged: onDefaultDeviceChanged,
 	//}
 	//
 	//mmnc := wca.NewIMMNotificationClient(callback)
-	//
+
 	//if err := mmde.RegisterEndpointNotificationCallback(mmnc); err != nil {
 	//	return errors.WithMessage(err, "failed to RegisterEndpointNotificationCallback readstate")
 	//}
@@ -507,6 +511,11 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	//}
 
 	fmt.Println("stopping audio capture")
+
+	//if err := mmde.UnregisterEndpointNotificationCallback(mmnc); err != nil {
+	//	return errors.Wrap(err, "failed to unregister endpoint notification callback")
+	//}
+
 	if err := ac.Stop(); err != nil {
 		return errors.Wrap(err, "failed to stop audio client")
 	}
@@ -669,7 +678,8 @@ func (v *Visualizer) processBuf(buf []byte, peak float64, sampleRate float64) {
 
 	pre := []float64{}
 
-	//pre = append(pre, els[0])
+	pre = append(pre, els[0])
+	pre = append(pre, els[1])
 	pre = append(pre, els[1])
 	pre = append(pre, els[1])
 	pre = append(pre, els[2])
@@ -712,12 +722,12 @@ func (v *Visualizer) processBuf(buf []byte, peak float64, sampleRate float64) {
 
 	next := 0.0
 	for i := 0; i < v.maxLedCount; i++ {
-		if i < len(els)-2 {
-			next = els[i] + els[i+1]
+		if i < len(els)-3 {
+			next = els[i] + els[i+1] + els[i+2]
 		} else {
-			next = els[i] + els[i]
+			next = els[i] + els[i] + els[i]
 		}
-		curr := (next) / 2
+		curr := (next) / 3
 		//curr := els[i]
 
 		//curr *= 10
@@ -740,15 +750,15 @@ func (v *Visualizer) processBuf(buf []byte, peak float64, sampleRate float64) {
 
 		norm := normalize(curr, 0, max)
 		//h := curr * 360
-		h := 0.0
-		if norm < 0.2 {
-			h = 320 // purple
-		} else if norm < 0.7 {
-			h = 240
-		} else if norm < 0.8 {
-			h = 320
+		var h float64
+		if norm < 0.3 {
+			h = 260 // 20
+		} else if norm < 0.6 {
+			h = 300 // 300
+		} else if norm < 0.85 {
+			h = 180 // 0
 		} else {
-			h = 0
+			h = 30 // 20
 		}
 		//h := 200. + norm*120
 
@@ -758,12 +768,11 @@ func (v *Visualizer) processBuf(buf []byte, peak float64, sampleRate float64) {
 		//s := math.Min((peak/3+0.66)/peak*2, 1)
 		//s := 1.
 		//s := math.Min(math.Abs((max+curr)*10), 1)
-		s := (0.5 + (norm / 2))
-		s = 1
+		s := (0.5 + (norm * 0.5))
 		v := norm + 0.0
 		v = (log((v+1)/2, 2) + 1)
-		v *= (0.333 + peak*0.666)
-		v = v*0.84 + 0.16
+		v *= (0.5 + peak*0.5)
+		v = v*0.85 + 0.15
 
 		//if max > .5 {
 		//	s = 0
@@ -934,7 +943,7 @@ func (v *Visualizer) processBuf(buf []byte, peak float64, sampleRate float64) {
 			for i := 0; i < len(pix); i += 4 {
 				out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
 			}
-			fmt.Print(out)
+			//fmt.Print(out)
 		}
 
 		segs = append(segs, interfaces.Segment{

@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"image"
 	"sync"
 	"time"
+
+	"github.com/bamiaux/rez"
 
 	"ledctl3/internal/client/config"
 	"ledctl3/internal/client/interfaces"
@@ -23,7 +26,8 @@ type Visualizer struct {
 	events         chan interfaces.UpdateEvent
 	displayConfigs [][]DisplayConfig
 
-	displays []Display
+	displays        []Display
+	displayResizers []rez.Converter
 }
 
 type DisplayConfig struct {
@@ -93,6 +97,8 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 			frames := d.Capture(captureCtx, cfg.Framerate)
 
 			for frame := range frames {
+				//fmt.Println(d.Resolution())
+
 				go v.process(d, cfg, frame)
 			}
 
@@ -156,8 +162,71 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 	//fmt.Println(d)
 	//fmt.Println(cfg)
 
-	pix = getEdges(pix, d.Width(), d.Height())
-	pix = getBounds(pix, cfg.BoundsOffset*4, cfg.BoundsSize*4)
+	if v.displayResizers[d.Id()] == nil {
+		src := &image.NRGBA{
+			Pix:    pix,
+			Stride: d.Width() * 4,
+			Rect:   image.Rect(0, 0, d.Width(), d.Height()),
+		}
+
+		ratio := (d.Width() + d.Height()) / (cfg.Leds / 2)
+		ratio = 90
+
+		//fmt.Println("ratio", ratio)
+		//fmt.Println(d.Width()/ratio, d.Height()/ratio)
+
+		dst := image.NewNRGBA(image.Rect(0, 0, d.Width()/ratio, d.Height()/ratio))
+
+		//fmt.Println()
+
+		convertCfg, err := rez.PrepareConversion(dst, src)
+		if err != nil {
+			panic(err)
+		}
+
+		converter, err := rez.NewConverter(convertCfg, rez.NewBilinearFilter())
+		if err != nil {
+			panic(err)
+		}
+
+		v.displayResizers[d.Id()] = converter
+	}
+
+	src := &image.NRGBA{
+		Pix:    pix,
+		Stride: d.Width() * 4,
+		Rect:   image.Rect(0, 0, d.Width(), d.Height()),
+	}
+
+	ratio := (d.Width() + d.Height()) / (cfg.Leds / 2)
+	ratio = 90
+
+	dst := image.NewNRGBA(image.Rect(0, 0, d.Width()/ratio, d.Height()/ratio))
+
+	err := v.displayResizers[d.Id()].Convert(dst, src)
+	if err != nil {
+		panic(err)
+	}
+
+	pix = dst.Pix
+	//width, height := d.Width(), d.Height()
+	width, height := d.Width()/ratio, d.Height()/ratio
+
+	//total := (d.Width()/ratio + d.Height()/ratio) * 2
+
+	if d.Orientation() == Portrait || d.Orientation() == PortraitFlipped {
+		width, height = height, width
+	}
+
+	pix = getEdges(pix, width, height)
+	//pix = rotatePix(pix, d.Orientation())
+
+	fromOffset := calculateOffset(width, height, 8, 21)
+	toOffset := calculateOffset(width, height, 31, 21)
+
+	size := getPixSliceSize(width, height, fromOffset, toOffset)
+
+	pix = getBounds(pix, fromOffset*4, size*4)
 	pix = averagePix(pix, cfg.Leds)
 	pix = adjustWhitePoint(pix, 0, 256)
 
@@ -170,6 +239,33 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 		},
 	}
 }
+
+func getPixSliceSize(width, height, from, to int) int {
+	return (width*2 + height*2) - from + to
+}
+
+func calculateOffset(width, height, x, y int) int {
+	var offset int
+	if x == 0 {
+		offset = 2*width + height + (height - y)
+	} else if x == width-1 {
+		offset = width + y
+	} else {
+		if y == 0 {
+			offset = x
+		} else if y == height-1 {
+			offset = width + height + (width - x)
+		} else {
+			return 0
+		}
+	}
+	// offset = offset % (d.Width*2 + d.Height*2)
+	return offset
+}
+
+//func rotatePix(pix []byte, orientation Orientation) []byte {
+//
+//}
 
 // adjustWhitePoint adjusts the white point for each color individually.
 func adjustWhitePoint(pix []byte, bp, wp float64) []byte {
@@ -397,7 +493,9 @@ func (v *Visualizer) matchDisplays(displays []Display) (map[int]DisplayConfig, e
 }
 
 func New(opts ...Option) (*Visualizer, error) {
-	v := &Visualizer{}
+	v := &Visualizer{
+		displayResizers: make([]rez.Converter, 2),
+	}
 
 	for _, opt := range opts {
 		err := opt(v)

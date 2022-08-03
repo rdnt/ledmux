@@ -18,4 +18,14 @@ type Display interface {
 	String() string
 	Close() error
 	Capture(ctx context.Context, framerate int) chan []byte
+	Orientation() Orientation
 }
+
+type Orientation int
+
+const (
+	Landscape Orientation = iota
+	Portrait
+	LandscapeFlipped
+	PortraitFlipped
+)

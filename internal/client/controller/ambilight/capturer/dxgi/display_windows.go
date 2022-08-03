@@ -8,21 +8,23 @@ import (
 	"time"
 
 	"github.com/kirides/screencapture/d3d"
+	"ledctl3/internal/client/controller/ambilight"
 )
 
 var ErrNoFrame = fmt.Errorf("no frame")
 
 type display struct {
-	index  int
-	id     int
-	width  int
-	height int
-	x      int
-	y      int
-	buf    *image.NRGBA
-	dev    *d3d.ID3D11Device
-	devCtx *d3d.ID3D11DeviceContext
-	ddup   *d3d.OutputDuplicator
+	index       int
+	id          int
+	width       int
+	height      int
+	x           int
+	y           int
+	buf         *image.NRGBA
+	dev         *d3d.ID3D11Device
+	devCtx      *d3d.ID3D11DeviceContext
+	ddup        *d3d.OutputDuplicator
+	orientation ambilight.Orientation
 }
 
 func (d *display) Id() int {
@@ -97,6 +99,10 @@ func (d *display) Capture(ctx context.Context, framerate int) chan []byte {
 	return frames
 }
 
+func (d *display) Orientation() ambilight.Orientation {
+	return d.orientation
+}
+
 func (d *display) nextFrame() ([]byte, error) {
 	err := d.ddup.GetImage(d.buf, 0)
 	if errors.Is(err, d3d.ErrNoImageYet) {
@@ -126,6 +132,17 @@ func (d *display) reset() error {
 		d.devCtx.Release()
 		d.devCtx = nil
 		return err
+	}
+
+	switch d.ddup.Orientation() {
+	case d3d.DXGI_MODE_ROTATION_UNSPECIFIED, d3d.DXGI_MODE_ROTATION_IDENTITY:
+		d.orientation = ambilight.Landscape
+	case d3d.DXGI_MODE_ROTATION_ROTATE90:
+		d.orientation = ambilight.Portrait
+	case d3d.DXGI_MODE_ROTATION_ROTATE180:
+		d.orientation = ambilight.LandscapeFlipped
+	case d3d.DXGI_MODE_ROTATION_ROTATE270:
+		d.orientation = ambilight.PortraitFlipped
 	}
 
 	return nil

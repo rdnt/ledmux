@@ -2,6 +2,7 @@ package scrap
 
 import (
 	"github.com/kbinani/screenshot"
+
 	"ledctl3/internal/client/controller/ambilight"
 )
 

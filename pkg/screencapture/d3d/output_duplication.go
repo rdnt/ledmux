@@ -6,8 +6,6 @@ import (
 	"image"
 	"unsafe"
 
-	"github.com/disintegration/imaging"
-
 	"github.com/kirides/screencapture/swizzle"
 )
 
@@ -259,27 +257,39 @@ func (dup *OutputDuplicator) GetImage(img *image.NRGBA, timeoutMs uint) error {
 	// copy source bytes into image.RGBA.Pix using memory interpretation
 	imageBytes := ((*[1 << 30]byte)(unsafe.Pointer(hMem)))[:bitmapDataSize:bitmapDataSize]
 
-	img2 := image.NewNRGBA(image.Rect(0, 0, int(size.X), int(size.Y)))
-	copy(img2.Pix[:bitmapDataSize], imageBytes)
+	//stride := img.Stride
+	//rect := img.Rect
 
-	dup.drawPointer(img2)
+	//img.Stride = int(size.X) * 4
+	//img.Rect = image.Rect(0, 0, int(size.X), int(size.Y))
+
+	//img2 := image.NewNRGBA(image.Rect(0, 0, int(size.X), int(size.Y)))
+	copy(img.Pix[:bitmapDataSize], imageBytes)
+
+	img.Rect = image.Rect(0, 0, int(size.X), int(size.Y))
+	img.Stride = int(size.X) * 4
+
+	//dup.drawPointer(img2)
 	if dup.needsSwizzle {
-		swizzle.BGRA(img2.Pix)
+		swizzle.BGRA(img.Pix)
 	}
 
-	switch dup.rotation {
-	case DXGI_MODE_ROTATION_UNSPECIFIED, DXGI_MODE_ROTATION_IDENTITY:
-		img.Pix = img2.Pix
-	case DXGI_MODE_ROTATION_ROTATE90:
-		img2 = imaging.Rotate270(img2)
-		img.Pix = img2.Pix
-	case DXGI_MODE_ROTATION_ROTATE180:
-		img2 = imaging.Rotate180(img2)
-		img.Pix = img2.Pix
-	case DXGI_MODE_ROTATION_ROTATE270:
-		img2 = imaging.Rotate90(img2)
-		img.Pix = img2.Pix
-	}
+	//switch dup.rotation {
+	//case DXGI_MODE_ROTATION_UNSPECIFIED, DXGI_MODE_ROTATION_IDENTITY:
+	//	//img.Pix = img.Pix
+	//case DXGI_MODE_ROTATION_ROTATE90:
+	//	img = imaging.Rotate270(img)
+	//	//img.Pix = img.Pix
+	//case DXGI_MODE_ROTATION_ROTATE180:
+	//	img = imaging.Rotate180(img)
+	//	//img.Pix = img.Pix
+	//case DXGI_MODE_ROTATION_ROTATE270:
+	//	img = imaging.Rotate90(img)
+	//	//img.Pix = img.Pix
+	//}
+
+	//img.Stride = stride
+	//img.Rect = rect
 
 	// manual swizzle B <-> R
 
@@ -292,6 +302,10 @@ func (dup *OutputDuplicator) GetImage(img *image.NRGBA, timeoutMs uint) error {
 	// 	img.Pix[i], img.Pix[i+1], img.Pix[i+2], img.Pix[i+3] = v2, v1, v0, 255
 	// }
 	return nil
+}
+
+func (dup *OutputDuplicator) Orientation() DXGI_MODE_ROTATION {
+	return dup.rotation
 }
 
 func (dup *OutputDuplicator) updatePointer(info *_DXGI_OUTDUPL_FRAME_INFO) error {

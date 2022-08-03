@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	goscrap "github.com/rdnt/go-scrap"
 	"runtime"
 	"time"
+
+	goscrap "github.com/rdnt/go-scrap"
+
+	"ledctl3/internal/client/controller/ambilight"
 )
 
 var ErrNoFrame = fmt.Errorf("no frame")
@@ -93,6 +96,10 @@ func (d *display) nextFrame() ([]byte, error) {
 	img.Detach()
 
 	return img.Pix, nil
+}
+
+func (d *display) Orientation() ambilight.Orientation {
+	return ambilight.Landscape
 }
 
 func (d *display) reset() error {
