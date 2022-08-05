@@ -1,4 +1,4 @@
-package ambilight
+package video
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/bamiaux/rez"
 
 	"ledctl3/internal/client/config"
-	"ledctl3/internal/client/interfaces"
+	"ledctl3/internal/client/visualizer"
 )
 
 var (
@@ -23,7 +23,7 @@ type Visualizer struct {
 	leds           int
 	cancel         context.CancelFunc
 	done           chan bool
-	events         chan interfaces.UpdateEvent
+	events         chan visualizer.UpdateEvent
 	displayConfigs [][]DisplayConfig
 
 	displays        []Display
@@ -61,7 +61,7 @@ func (d DisplayConfig) String() string {
 	)
 }
 
-func (v *Visualizer) Events() chan interfaces.UpdateEvent {
+func (v *Visualizer) Events() chan visualizer.UpdateEvent {
 	return v.events
 }
 
@@ -230,8 +230,8 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 	pix = averagePix(pix, cfg.Leds)
 	pix = adjustWhitePoint(pix, 0, 256)
 
-	v.events <- interfaces.UpdateEvent{
-		Segments: []interfaces.Segment{
+	v.events <- visualizer.UpdateEvent{
+		Segments: []visualizer.Segment{
 			{
 				Id:  cfg.SegmentId,
 				Pix: pix,
@@ -517,7 +517,7 @@ func New(opts ...Option) (*Visualizer, error) {
 	fmt.Println(v.displayConfigs)
 	fmt.Println("@@@@@@@@@@@@@@")
 
-	v.events = make(chan interfaces.UpdateEvent)
+	v.events = make(chan visualizer.UpdateEvent)
 
 	return v, nil
 }

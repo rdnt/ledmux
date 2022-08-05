@@ -125,7 +125,7 @@ func Load() (*Config, error) {
 
 func createDefault() (*Config, error) {
 	c := Config{
-		DefaultMode: "ambilight",
+		DefaultMode: "video",
 		CaptureType: "bitblt",
 		Server: Server{
 			Host:       "0.0.0.0",

@@ -18,19 +18,19 @@ import (
 type Mode string
 
 const (
-	Ambilight Mode = "ambilight"
-	AudioViz  Mode = "audioviz"
+	Ambilight Mode = "video"
+	AudioViz  Mode = "audio"
 	Rainbow   Mode = "rainbow"
 	Static    Mode = "static"
 	Reload    Mode = "reload"
 )
 
 var modes = map[string]Mode{
-	"ambilight": Ambilight,
-	"audioviz":  AudioViz,
-	"rainbow":   Rainbow,
-	"static":    Static,
-	"reload":    Reload,
+	"video":   Ambilight,
+	"audio":   AudioViz,
+	"rainbow": Rainbow,
+	"static":  Static,
+	"reload":  Reload,
 }
 
 type Controller struct {

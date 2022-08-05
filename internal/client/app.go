@@ -8,8 +8,8 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 
 	"ledctl3/internal/client/controller"
-	"ledctl3/internal/client/controller/ambilight"
-	"ledctl3/internal/client/controller/audioviz"
+	"ledctl3/internal/client/controller/audio"
+	"ledctl3/internal/client/controller/video"
 	"ledctl3/internal/pkg/events"
 )
 
@@ -26,8 +26,8 @@ type App struct {
 	Segments   []Segment
 	conn       *websocket.Conn
 
-	Displays       ambilight.DisplayRepository
-	DisplayConfigs [][]ambilight.DisplayConfig
+	Displays       video.DisplayRepository
+	DisplayConfigs [][]video.DisplayConfig
 
 	//cfg config.Config
 	//ip       string
@@ -36,8 +36,8 @@ type App struct {
 	//capturer string
 
 	ctl *controller.Controller
-	//displayVisualizer interfaces.Visualizer
-	//audioVisualizer   interfaces.Visualizer
+	//displayVisualizer visualizer.Visualizer
+	//audioVisualizer   visualizer.Visualizer
 }
 
 type Segment struct {
@@ -64,26 +64,28 @@ func New(opts ...Option) (*App, error) {
 		return nil, err
 	}
 
-	displayVisualizer, err := ambilight.New(
-		ambilight.WithLedsCount(a.Leds),
-		ambilight.WithDisplayRepository(a.Displays),
-		ambilight.WithDisplayConfig(a.DisplayConfigs), // TODO @@@@
+	displayVisualizer, err := video.New(
+		video.WithLedsCount(a.Leds),
+		video.WithDisplayRepository(a.Displays),
+		video.WithDisplayConfig(a.DisplayConfigs), // TODO @@@@
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	segs := []audioviz.Segment{}
+	segs := []audio.Segment{}
 	for _, seg := range a.Segments {
-		segs = append(segs, audioviz.Segment{
+		segs = append(segs, audio.Segment{
 			Id:   seg.Id,
 			Leds: seg.Leds,
 		})
 	}
 
-	audioVisualizer, err := audioviz.New(
-		audioviz.WithLedsCount(a.Leds),
-		audioviz.WithSegments(segs),
+	audioVisualizer, err := audio.New(
+		audio.Options{
+			Leds:     a.Leds,
+			Segments: segs,
+		},
 	)
 
 	a.ctl, err = controller.New(

@@ -6,17 +6,17 @@ import (
 
 	"github.com/kbinani/screenshot"
 
-	"ledctl3/internal/client/controller/ambilight"
+	"ledctl3/internal/client/controller/video"
 )
 
 var scaleFactor = 8
 
 type dxgiCapturer struct {
-	displays []ambilight.Display
+	displays []video.Display
 }
 
-func (c *dxgiCapturer) All() ([]ambilight.Display, error) {
-	ds := []ambilight.Display{}
+func (c *dxgiCapturer) All() ([]video.Display, error) {
+	ds := []video.Display{}
 
 	count := screenshot.NumActiveDisplays()
 	for i := 0; i < count; i++ {

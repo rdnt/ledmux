@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"time"
 
-	"ledctl3/internal/client/controller/ambilight"
-	"ledctl3/internal/client/controller/ambilight/capturer/dxgi"
+	"ledctl3/internal/client/controller/video"
+	"ledctl3/internal/client/controller/video/capturer/dxgi"
 )
 
 func main() {
@@ -51,7 +51,7 @@ func main() {
 	for _, d := range displays {
 		frames := d.Capture(ctx, 1)
 
-		go func(d ambilight.Display) {
+		go func(d video.Display) {
 			for range frames {
 				if d.Id() == 0 {
 					os.Exit(0)

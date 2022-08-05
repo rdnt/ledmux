@@ -1,4 +1,4 @@
-package ambilight
+package video
 
 import (
 	"context"

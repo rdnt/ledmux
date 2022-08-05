@@ -1,6 +1,11 @@
-package audioviz
+package audio
 
 type Option func(p *Visualizer) error
+
+type Options struct {
+	Leds     int
+	Segments []Segment
+}
 
 func WithLedsCount(leds int) Option {
 	return func(p *Visualizer) error {
@@ -12,7 +17,7 @@ func WithLedsCount(leds int) Option {
 func WithSegments(segs []Segment) Option {
 	return func(p *Visualizer) error {
 		p.maxLedCount = 0
-		
+
 		for _, seg := range segs {
 			if seg.Leds > p.maxLedCount {
 				p.maxLedCount = seg.Leds
@@ -23,10 +28,3 @@ func WithSegments(segs []Segment) Option {
 		return nil
 	}
 }
-
-//func WithAudioSource(source interfaces.AudioSource) Option {
-//	return func(p *Visualizer) error {
-//		p.source = source
-//		return nil
-//	}
-//}

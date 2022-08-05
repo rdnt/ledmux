@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"ledctl3/internal/client"
-	"ledctl3/internal/client/config"
 	"os"
 	"os/signal"
+
+	"ledctl3/internal/client"
+	"ledctl3/internal/client/config"
 )
 
 func main() {
@@ -17,17 +18,17 @@ func main() {
 	//	panic(err)
 	//}
 
-	//amb, err := ambilight.New(
-	//	ambilight.WithLedsCount(leds),
-	//	ambilight.WithDisplayRepository(displays),
+	//amb, err := video.New(
+	//	video.WithLedsCount(leds),
+	//	video.WithDisplayRepository(displays),
 	//)
 	//if err != nil {
 	//	panic(err)
 	//}
 
-	//viz, err := audioviz.New(
-	//	audioviz.WithLedsCount(leds),
-	//	audioviz.WithAudioSource(nil),
+	//viz, err := audio.New(
+	//	audio.WithLedsCount(leds),
+	//	audio.WithAudioSource(nil),
 	//)
 	//if err != nil {
 	//	panic(err)

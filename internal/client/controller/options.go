@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"ledctl3/internal/client/interfaces"
+	"ledctl3/internal/client/visualizer"
 )
 
 type Option func(*Controller) error
@@ -13,14 +13,14 @@ func WithLedsCount(leds int) Option {
 	}
 }
 
-func WithDisplayVisualizer(visualizer interfaces.Visualizer) Option {
+func WithDisplayVisualizer(visualizer visualizer.Visualizer) Option {
 	return func(ctl *Controller) error {
 		ctl.displayVisualizer = visualizer
 		return nil
 	}
 }
 
-func WithAudioVisualizer(visualizer interfaces.Visualizer) Option {
+func WithAudioVisualizer(visualizer visualizer.Visualizer) Option {
 	return func(ctl *Controller) error {
 		ctl.audioVisualizer = visualizer
 		return nil

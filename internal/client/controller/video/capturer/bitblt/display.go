@@ -7,7 +7,7 @@ import (
 
 	"github.com/kbinani/screenshot"
 
-	"ledctl3/internal/client/controller/ambilight"
+	"ledctl3/internal/client/controller/video"
 )
 
 type display struct {
@@ -42,8 +42,8 @@ func (d *display) Resolution() string {
 	return fmt.Sprintf("%dx%d", d.width, d.height)
 }
 
-func (d *display) Orientation() ambilight.Orientation {
-	return ambilight.Landscape
+func (d *display) Orientation() video.Orientation {
+	return video.Landscape
 }
 
 func (d *display) String() string {

@@ -1,4 +1,4 @@
-defaultMode: "ambilight"
+defaultMode: "video"
 capturerType: "bitblt"
 server:
   host: "0.0.0.0"

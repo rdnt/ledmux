@@ -5,18 +5,18 @@ import (
 
 	"github.com/vmihailenco/msgpack/v5"
 
-	"ledctl3/internal/client/interfaces"
+	"ledctl3/internal/client/visualizer"
 	"ledctl3/internal/pkg/events"
 )
 
 type Controller struct {
 	leds       int
 	mode       Mode
-	visualizer interfaces.Visualizer
+	visualizer visualizer.Visualizer
 	events     chan []byte
 
-	displayVisualizer interfaces.Visualizer
-	audioVisualizer   interfaces.Visualizer
+	displayVisualizer visualizer.Visualizer
+	audioVisualizer   visualizer.Visualizer
 	segmentCount      int
 }
 
@@ -110,7 +110,7 @@ func (ctl *Controller) SetMode(mode Mode) error {
 						Pix: seg.Pix,
 					})
 				}
-				//fmt.Println(evt.Data)
+
 				e := events.NewAmbilightEvent(segs)
 
 				b, err := msgpack.Marshal(e)

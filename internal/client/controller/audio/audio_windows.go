@@ -1,11 +1,10 @@
-package audioviz
+package audio
 
 import (
 	"context"
 	"encoding/binary"
 	"fmt"
 	"math"
-	"syscall"
 	"time"
 	"unsafe"
 
@@ -16,101 +15,12 @@ import (
 	"github.com/moutend/go-wca/pkg/wca"
 	"github.com/pkg/errors"
 
-	"ledctl3/internal/client/interfaces"
+	"ledctl3/internal/client/visualizer"
 )
 
-type IAudioMeterInformation struct {
-	ole.IUnknown
-}
-
-type IAudioMeterInformationVtbl struct {
-	ole.IUnknownVtbl
-	GetPeakValue            uintptr
-	GetChannelsPeakValues   uintptr
-	GetMeteringChannelCount uintptr
-	QueryHardwareSupport    uintptr
-}
-
-func (v *IAudioMeterInformation) VTable() *IAudioMeterInformationVtbl {
-	return (*IAudioMeterInformationVtbl)(unsafe.Pointer(v.RawVTable))
-}
-
-func (v *IAudioMeterInformation) GetPeakValue(peak *float32) (err error) {
-	err = amiGetPeakValue(v, peak)
-	return
-}
-
-func (v *IAudioMeterInformation) GetMeteringChannelCount(count *uint32) (err error) {
-	err = amiGetMeteringChannelCount(v, count)
-	return
-}
-
-func (v *IAudioMeterInformation) GetChannelsPeakValues(count uint32, peaks []float32) (err error) {
-	err = amiGetChannelsPeakValues(v, count, peaks)
-	return
-}
-
-func (v *IAudioMeterInformation) QueryHardwareSupport(response *uint32) (err error) {
-	err = amiQueryHardwareSupport(v, response)
-	return
-}
-
-func amiGetPeakValue(ami *IAudioMeterInformation, peak *float32) (err error) {
-	hr, _, _ := syscall.Syscall(
-		ami.VTable().GetPeakValue,
-		2,
-		uintptr(unsafe.Pointer(ami)),
-		uintptr(unsafe.Pointer(peak)),
-		0)
-	if hr != 0 {
-		err = ole.NewError(hr)
-	}
-	return
-
-}
-
-func amiGetChannelsPeakValues(ami *IAudioMeterInformation, count uint32, peaks []float32) (err error) {
-	hr, _, _ := syscall.Syscall(ami.VTable().GetChannelsPeakValues,
-		3,
-		uintptr(unsafe.Pointer(ami)),
-		uintptr(count),
-		uintptr(unsafe.Pointer(&peaks[0])))
-	if hr != 0 {
-		err = ole.NewError(hr)
-	}
-	return
-}
-
-func amiGetMeteringChannelCount(ami *IAudioMeterInformation, count *uint32) (err error) {
-	hr, _, _ := syscall.Syscall(
-		ami.VTable().GetMeteringChannelCount,
-		2,
-		uintptr(unsafe.Pointer(ami)),
-		uintptr(unsafe.Pointer(count)),
-		0)
-	if hr != 0 {
-		err = ole.NewError(hr)
-	}
-	return
-}
-
-func amiQueryHardwareSupport(ami *IAudioMeterInformation, response *uint32) (err error) {
-	hr, _, _ := syscall.Syscall(
-		ami.VTable().GetMeteringChannelCount,
-		2,
-		uintptr(unsafe.Pointer(ami)),
-		uintptr(unsafe.Pointer(response)),
-		0)
-	if hr != 0 {
-		err = ole.NewError(hr)
-	}
-	return
-}
-
 type Visualizer struct {
-	source         interfaces.AudioSource
 	leds           int
-	events         chan interfaces.UpdateEvent
+	events         chan visualizer.UpdateEvent
 	cancel         context.CancelFunc
 	childCancel    context.CancelFunc
 	done           chan bool
@@ -133,20 +43,6 @@ func (v *Visualizer) Start() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	v.cancel = cancel
 	v.done = make(chan bool)
-
-	c1, _ := colorful.Hex("#0B1A1E")
-	c2, _ := colorful.Hex("#507C85")
-	c3, _ := colorful.Hex("#689F9A")
-	c4, _ := colorful.Hex("#FF9B71")
-	c5, _ := colorful.Hex("#E84855")
-
-	v.config = Config{
-		Color1: c1,
-		Color2: c2,
-		Color3: c3,
-		Color4: c4,
-		Color5: c5,
-	}
 
 	go func() {
 		for {
@@ -178,7 +74,7 @@ func (v *Visualizer) Start() error {
 	return nil
 }
 
-func (v *Visualizer) Events() chan interfaces.UpdateEvent {
+func (v *Visualizer) Events() chan visualizer.UpdateEvent {
 	return v.events
 }
 
@@ -188,12 +84,8 @@ func (v *Visualizer) Stop() error {
 		v.cancel = nil
 	}
 
-	fmt.Println("stop: waiting for done")
+	<-v.done
 
-	// FIXME: this blocks shutdown for some reason..
-	//<-v.done
-
-	fmt.Println("stop: done received")
 	return nil
 }
 
@@ -225,7 +117,6 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	if err := ps.GetValue(&wca.PKEY_Device_FriendlyName, &pv); err != nil {
 		return err
 	}
-	fmt.Printf("Capturing audio from: %s\n", pv.String())
 
 	var ac *wca.IAudioClient
 	if err := mmd.Activate(wca.IID_IAudioClient, wca.CLSCTX_ALL, nil, &ac); err != nil {
@@ -239,12 +130,6 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	}
 	defer vol.Release()
 
-	var ami *IAudioMeterInformation
-	if err := mmd.Activate(wca.IID_IAudioMeterInformation, wca.CLSCTX_ALL, nil, &ami); err != nil {
-		return err
-	}
-	defer ami.Release()
-
 	var wfx *wca.WAVEFORMATEX
 	if err := ac.GetMixFormat(&wfx); err != nil {
 		return err
@@ -256,11 +141,9 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	wfx.NAvgBytesPerSec = wfx.NSamplesPerSec * uint32(wfx.NBlockAlign)
 	wfx.CbSize = 0
 
-	fmt.Println("--------")
 	fmt.Printf("Format: PCM %d bit signed integer\n", wfx.WBitsPerSample)
 	fmt.Printf("Rate: %d Hz\n", wfx.NSamplesPerSec)
 	fmt.Printf("Channels: %d\n", wfx.NChannels)
-	fmt.Println("--------")
 
 	var defaultPeriod wca.REFERENCE_TIME
 	var minimumPeriod wca.REFERENCE_TIME
@@ -339,18 +222,15 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 			}
 
 			if err = acc.GetBuffer(&data, &availableFrameSize, &flags, &devicePosition, &qcpPosition); err != nil {
-				fmt.Println("GetBuffer failed", err)
 				continue
 			}
 
 			if availableFrameSize == 0 {
-				fmt.Println("0 frame size")
 				continue
 			}
 
 			start := unsafe.Pointer(data)
 			if start == nil {
-				fmt.Println("nil data")
 				continue
 			}
 
@@ -372,8 +252,6 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 		}
 
 	}
-
-	fmt.Println("stopping audio capture")
 
 	if err := ac.Stop(); err != nil {
 		return errors.Wrap(err, "failed to stop audio client")
@@ -423,18 +301,15 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 		Signal:     samples,
 	}
 
+	var freqs []float64
+
 	normalized, err := signal.Normalize()
 	if err != nil {
-		return
+		freqs = make([]float64, 882)
+	} else {
+		spectrum, _ := normalized.FrequencySpectrum() // never fails
+		freqs = spectrum.Spectrum
 	}
-
-	spectrum, err := normalized.FrequencySpectrum()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	freqs := spectrum.Spectrum
 
 	lows := []float64{}
 
@@ -508,7 +383,7 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 	weightsTotal := 0.0
 
 	for i := 0; i < len(pixs); i++ {
-		w := float64((i + 1) * (i + 1))
+		w := float64(i + len(pixs))
 		weights = append(weights, w)
 		weightsTotal += w
 	}
@@ -526,7 +401,7 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 		pix3[i] = float64(avg)
 	}
 
-	segs := []interfaces.Segment{}
+	segs := []visualizer.Segment{}
 
 	for _, seg := range v.segments {
 		length := seg.Leds * 4
@@ -555,36 +430,53 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 			fmt.Print(out)
 		}
 
-		segs = append(segs, interfaces.Segment{
+		segs = append(segs, visualizer.Segment{
 			Id:  seg.Id,
 			Pix: pix,
 		})
 	}
 
-	v.events <- interfaces.UpdateEvent{
+	v.events <- visualizer.UpdateEvent{
 		Segments: segs,
 	}
 }
 
 func normalize(val, min, max float64) float64 {
+	if max == min {
+		return max
+	}
+
 	return (val - min) / (max - min)
 }
 
 var pixs [][]byte
 
-var max2 uint8
-
-func New(opts ...Option) (*Visualizer, error) {
+func New(opts Options) (*Visualizer, error) {
 	v := &Visualizer{}
 
-	for _, opt := range opts {
-		err := opt(v)
-		if err != nil {
-			return nil, err
+	for _, seg := range opts.Segments {
+		if seg.Leds > v.maxLedCount {
+			v.maxLedCount = seg.Leds
 		}
 	}
 
-	v.events = make(chan interfaces.UpdateEvent, len(v.segments)*8)
+	v.segments = opts.Segments
+	v.leds = opts.Leds
+	v.events = make(chan visualizer.UpdateEvent, len(v.segments)*8)
+
+	c1, _ := colorful.Hex("#221133")
+	c2, _ := colorful.Hex("#282960")
+	c3, _ := colorful.Hex("#442968")
+	c4, _ := colorful.Hex("#ea267a")
+	c5, _ := colorful.Hex("#2ffee1")
+
+	v.config = Config{
+		Color1: c1,
+		Color2: c2,
+		Color3: c3,
+		Color4: c4,
+		Color5: c5,
+	}
 
 	return v, nil
 }

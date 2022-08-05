@@ -1,4 +1,4 @@
-package ambilight
+package video
 
 type Option func(p *Visualizer) error
 

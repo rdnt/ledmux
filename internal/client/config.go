@@ -5,10 +5,9 @@ import (
 
 	"ledctl3/internal/client/config"
 	"ledctl3/internal/client/controller"
-	"ledctl3/internal/client/controller/ambilight"
-	"ledctl3/internal/client/controller/ambilight/capturer/bitblt"
-	"ledctl3/internal/client/controller/ambilight/capturer/dxgi"
-	"ledctl3/internal/client/controller/ambilight/capturer/scrap"
+	"ledctl3/internal/client/controller/video"
+	"ledctl3/internal/client/controller/video/capturer/bitblt"
+	"ledctl3/internal/client/controller/video/capturer/dxgi"
 )
 
 type CapturerType string
@@ -16,13 +15,11 @@ type CapturerType string
 const (
 	DXGI   CapturerType = "dxgi"
 	BitBlt CapturerType = "bitblt"
-	Scrap  CapturerType = "scrap"
 )
 
 var capturerTypes = map[string]CapturerType{
 	"dxgi":   DXGI,
 	"bitblt": BitBlt,
-	"scrap":  Scrap,
 }
 
 type StripType string
@@ -165,11 +162,6 @@ func (a *App) applyConfig(c config.Config) (err error) {
 		}
 	case BitBlt:
 		a.Displays = bitblt.New()
-	case Scrap:
-		a.Displays, err = scrap.New()
-		if err != nil {
-			return err
-		}
 	}
 
 	a.DefaultMode = controller.Mode(c.DefaultMode)
@@ -191,7 +183,7 @@ func (a *App) applyConfig(c config.Config) (err error) {
 	}
 
 	for i, cfg := range c.Displays {
-		parsedCfg := []ambilight.DisplayConfig{}
+		parsedCfg := []video.DisplayConfig{}
 
 		for j, d := range cfg {
 			fromOffset := calculateOffset(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
@@ -211,7 +203,7 @@ func (a *App) applyConfig(c config.Config) (err error) {
 			}
 
 			parsedCfg = append(
-				parsedCfg, ambilight.DisplayConfig{
+				parsedCfg, video.DisplayConfig{
 					Id:           j,
 					SegmentId:    d.Segment,
 					Leds:         leds,

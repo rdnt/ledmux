@@ -2,7 +2,8 @@ package bitblt
 
 import (
 	"github.com/kbinani/screenshot"
-	"ledctl3/internal/client/controller/ambilight"
+
+	"ledctl3/internal/client/controller/video"
 )
 
 var scaleFactor = 8
@@ -11,8 +12,8 @@ type bitbltCapturer struct {
 	displays []*display
 }
 
-func (c *bitbltCapturer) All() ([]ambilight.Display, error) {
-	ds := []ambilight.Display{}
+func (c *bitbltCapturer) All() ([]video.Display, error) {
+	ds := []video.Display{}
 
 	count := screenshot.NumActiveDisplays()
 	for i := 0; i < count; i++ {

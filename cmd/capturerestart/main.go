@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"ledctl3/internal/client/controller/ambilight/capturer/dxgi"
-	"ledctl3/internal/client/interfaces"
 	"sync"
 	"time"
+
+	"ledctl3/internal/client/controller/video/capturer/dxgi"
+	"ledctl3/internal/client/visualizer"
 )
 
 func main() {
@@ -35,7 +36,7 @@ func main() {
 		for _, d := range displays {
 			frames := d.Capture(ctx, 1000)
 			fmt.Println(time.Since(now))
-			go func(d interfaces.Display) {
+			go func(d visualizer.Display) {
 				for range frames {
 					wg.Done()
 					break

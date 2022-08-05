@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/kirides/screencapture/d3d"
-	"ledctl3/internal/client/controller/ambilight"
+	"ledctl3/internal/client/controller/video"
 )
 
 var ErrNoFrame = fmt.Errorf("no frame")
@@ -24,7 +24,7 @@ type display struct {
 	dev         *d3d.ID3D11Device
 	devCtx      *d3d.ID3D11DeviceContext
 	ddup        *d3d.OutputDuplicator
-	orientation ambilight.Orientation
+	orientation video.Orientation
 }
 
 func (d *display) Id() int {
@@ -99,7 +99,7 @@ func (d *display) Capture(ctx context.Context, framerate int) chan []byte {
 	return frames
 }
 
-func (d *display) Orientation() ambilight.Orientation {
+func (d *display) Orientation() video.Orientation {
 	return d.orientation
 }
 
@@ -136,13 +136,13 @@ func (d *display) reset() error {
 
 	switch d.ddup.Orientation() {
 	case d3d.DXGI_MODE_ROTATION_UNSPECIFIED, d3d.DXGI_MODE_ROTATION_IDENTITY:
-		d.orientation = ambilight.Landscape
+		d.orientation = video.Landscape
 	case d3d.DXGI_MODE_ROTATION_ROTATE90:
-		d.orientation = ambilight.Portrait
+		d.orientation = video.Portrait
 	case d3d.DXGI_MODE_ROTATION_ROTATE180:
-		d.orientation = ambilight.LandscapeFlipped
+		d.orientation = video.LandscapeFlipped
 	case d3d.DXGI_MODE_ROTATION_ROTATE270:
-		d.orientation = ambilight.PortraitFlipped
+		d.orientation = video.PortraitFlipped
 	}
 
 	return nil
