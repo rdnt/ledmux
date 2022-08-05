@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"os/signal"
@@ -11,31 +12,10 @@ import (
 	"ledctl3/internal/client/config"
 )
 
+//go:embed icon.ico
+var icon []byte
+
 func main() {
-	//leds := 83
-	//cap := "dxgi"
-
-	//displays, err := dxgi.New()
-	//if err != nil {
-	//	panic(err)
-	//}
-
-	//amb, err := video.New(
-	//	video.WithLedsCount(leds),
-	//	video.WithDisplayRepository(displays),
-	//)
-	//if err != nil {
-	//	panic(err)
-	//}
-
-	//viz, err := audio.New(
-	//	audio.WithLedsCount(leds),
-	//	audio.WithAudioSource(nil),
-	//)
-	//if err != nil {
-	//	panic(err)
-	//}
-
 	cfg, err := config.Load()
 	if err != nil {
 		panic(err)
@@ -54,27 +34,24 @@ func main() {
 	}
 	defer c.Stop()
 
-	//err = s.SetMode(serverrpi.Ambilight)
-	//if err != nil {
-	//	panic(err)
-	//}
-
 	exit := make(chan os.Signal, 1)
 	signal.Notify(exit, os.Interrupt)
 
 	go tray.Run(func() {
+		tray.SetIcon(icon)
+
 		// Setup menu items
-		title := tray.AddMenuItem("ledctl", "")
+		title := tray.AddMenuItem("rdnt/ledctl", "")
 		title.Disable()
 
 		tray.AddSeparator()
 
-		videoMode := tray.AddMenuItem("ambilight/video", "")
-		audioMode := tray.AddMenuItem("ambilight/audio", "")
+		videoMode := tray.AddMenuItem("Ambilight - Video", "")
+		audioMode := tray.AddMenuItem("Ambilight - Audio", "")
 
 		tray.AddSeparator()
-		
-		quit := tray.AddMenuItem("quit", "")
+
+		quit := tray.AddMenuItem("Quit", "")
 		// Run an infinite loop on goroutine to detect button presses
 		go func() {
 			for {
