@@ -35,7 +35,9 @@ type App struct {
 	//mode     string
 	//capturer string
 
-	ctl *controller.Controller
+	ctl           *controller.Controller
+	ServerAddress string
+
 	//displayVisualizer visualizer.Visualizer
 	//audioVisualizer   visualizer.Visualizer
 }
@@ -57,12 +59,8 @@ func New(opts ...Option) (*App, error) {
 
 	var err error
 	addr := fmt.Sprintf("ws://%s:%d/ws", a.Host, a.Port)
-	fmt.Println(addr)
 
-	a.conn, _, err = websocket.DefaultDialer.Dial(addr, nil)
-	if err != nil {
-		return nil, err
-	}
+	a.ServerAddress = addr
 
 	displayVisualizer, err := video.New(
 		video.WithLedsCount(a.Leds),
@@ -112,7 +110,13 @@ func New(opts ...Option) (*App, error) {
 }
 
 func (a *App) Start() error {
-	err := a.reload()
+	var err error
+	a.conn, _, err = websocket.DefaultDialer.Dial(a.ServerAddress, nil)
+	if err != nil {
+		return err
+	}
+
+	err = a.reload()
 	if err != nil {
 		panic(err)
 	}
