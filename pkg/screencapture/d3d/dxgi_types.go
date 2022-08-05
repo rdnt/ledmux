@@ -1,7 +1,5 @@
 package d3d
 
-import "C"
-
 //go:generate stringer -type=_DXGI_OUTDUPL_POINTER_SHAPE_TYPE -output=dxgi_types_string.go
 
 type _DXGI_RATIONAL struct {
@@ -18,7 +16,7 @@ type _DXGI_MODE_DESC struct {
 }
 
 type _DXGI_OUTPUT_DESC struct {
-	DeviceName         [32]C.wchar_t
+	DeviceName         [32]uint16 // C.wchar_t
 	DesktopCoordinates RECT
 	AttachedToDesktop  bool
 	Rotation           uint32
