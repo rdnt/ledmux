@@ -41,7 +41,7 @@ func main() {
 		tray.SetIcon(icon)
 
 		// Setup menu items
-		title := tray.AddMenuItem("rdnt/ledctl", "")
+		title := tray.AddMenuItem("ledctl", "")
 		title.Disable()
 
 		tray.AddSeparator()

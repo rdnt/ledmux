@@ -10,7 +10,6 @@ import (
 
 	"github.com/eripe970/go-dsp-utils"
 	"github.com/go-ole/go-ole"
-	"github.com/gookit/color"
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/moutend/go-wca/pkg/wca"
 	"github.com/pkg/errors"
@@ -63,7 +62,7 @@ func (v *Visualizer) Start() error {
 
 					return
 				} else if err != nil {
-					fmt.Println("error starting capture:", err)
+					fmt.Println("error starting audio capture:", err)
 
 					time.Sleep(1 * time.Second)
 				}
@@ -113,22 +112,11 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	}
 	defer ps.Release()
 
-	var pv wca.PROPVARIANT
-	if err := ps.GetValue(&wca.PKEY_Device_FriendlyName, &pv); err != nil {
-		return err
-	}
-
 	var ac *wca.IAudioClient
 	if err := mmd.Activate(wca.IID_IAudioClient, wca.CLSCTX_ALL, nil, &ac); err != nil {
 		return err
 	}
 	defer ac.Release()
-
-	var vol *wca.IAudioEndpointVolume
-	if err := mmd.Activate(wca.IID_IAudioEndpointVolume, wca.CLSCTX_ALL, nil, &vol); err != nil {
-		return err
-	}
-	defer vol.Release()
 
 	var wfx *wca.WAVEFORMATEX
 	if err := ac.GetMixFormat(&wfx); err != nil {
@@ -136,6 +124,7 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	}
 	defer ole.CoTaskMemFree(uintptr(unsafe.Pointer(wfx)))
 
+	wfx.NChannels = 2 // force channels to two
 	wfx.WFormatTag = 1
 	wfx.NBlockAlign = (wfx.WBitsPerSample / 8) * wfx.NChannels
 	wfx.NAvgBytesPerSec = wfx.NSamplesPerSec * uint32(wfx.NBlockAlign)
@@ -162,6 +151,7 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 		wca.AUDCLNT_STREAMFLAGS_EVENTCALLBACK|wca.AUDCLNT_STREAMFLAGS_LOOPBACK,
 		defaultPeriod, 0, wfx, nil,
 	); err != nil {
+		panic(err)
 		return err
 	}
 
@@ -422,13 +412,13 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 
 		pix := pix4[:seg.Leds*4]
 
-		if seg.Id == 0 {
-			out := "\n"
-			for i := 0; i < len(pix); i += 4 {
-				out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
-			}
-			fmt.Print(out)
-		}
+		//if seg.Id == 0 {
+		//	out := "\n"
+		//	for i := 0; i < len(pix); i += 4 {
+		//		out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
+		//	}
+		//	fmt.Print(out)
+		//}
 
 		segs = append(segs, visualizer.Segment{
 			Id:  seg.Id,
@@ -467,8 +457,8 @@ func New(opts Options) (*Visualizer, error) {
 	c1, _ := colorful.Hex("#221133")
 	c2, _ := colorful.Hex("#282960")
 	c3, _ := colorful.Hex("#442968")
-	c4, _ := colorful.Hex("#ea267a")
-	c5, _ := colorful.Hex("#2ffee1")
+	c4, _ := colorful.Hex("#2ffee1")
+	c5, _ := colorful.Hex("#ea267a")
 
 	v.config = Config{
 		Color1: c1,
