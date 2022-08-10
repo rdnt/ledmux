@@ -373,7 +373,7 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 	weightsTotal := 0.0
 
 	for i := 0; i < len(pixs); i++ {
-		w := float64(i + len(pixs))
+		w := float64(i*2 + len(pixs))
 		weights = append(weights, w)
 		weightsTotal += w
 	}
@@ -454,8 +454,8 @@ func New(opts Options) (*Visualizer, error) {
 	v.leds = opts.Leds
 	v.events = make(chan visualizer.UpdateEvent, len(v.segments)*8)
 
-	c1, _ := colorful.Hex("#221133")
-	c2, _ := colorful.Hex("#282960")
+	c1, _ := colorful.Hex("#331111")
+	c2, _ := colorful.Hex("#602980")
 	c3, _ := colorful.Hex("#442968")
 	c4, _ := colorful.Hex("#2ffee1")
 	c5, _ := colorful.Hex("#ea267a")
