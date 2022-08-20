@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -18,6 +19,7 @@ import (
 )
 
 type Visualizer struct {
+	mux         sync.Mutex
 	leds        int
 	events      chan visualizer.UpdateEvent
 	cancel      context.CancelFunc
@@ -25,6 +27,8 @@ type Visualizer struct {
 	done        chan bool
 	segments    []Segment
 	maxLedCount int
+
+	processing bool
 
 	config Config
 }
@@ -46,23 +50,16 @@ func (v *Visualizer) Start() error {
 		for {
 			select {
 			case <-ctx.Done():
-				fmt.Println("parent ctx done, exiting")
 				v.done <- true
 				return
 			default:
-				fmt.Println("STARTING AUDIO CAPTURE")
-
 				var childCtx context.Context
 				childCtx, v.childCancel = context.WithCancel(ctx)
 
 				err := v.startCapture(childCtx)
 				if errors.Is(err, context.Canceled) {
-					fmt.Println("capture canceled")
-
 					return
 				} else if err != nil {
-					fmt.Println("error starting audio capture:", err)
-
 					time.Sleep(1 * time.Second)
 				}
 			}
@@ -176,7 +173,6 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	if err := ac.Start(); err != nil {
 		return err
 	}
-	fmt.Println("Start capturing with shared event driven mode")
 
 	var offset int
 	var b *byte
@@ -212,18 +208,15 @@ loop:
 			}
 
 			if err = acc.GetBuffer(&data, &availableFrameSize, &flags, &devicePosition, &qcpPosition); err != nil {
-				fmt.Println("error during get buffer")
 				continue
 			}
 
 			if availableFrameSize == 0 {
-				fmt.Println("availableFrameSize == 0")
 				continue
 			}
 
 			start := unsafe.Pointer(data)
 			if start == nil {
-				fmt.Println("start is nil pointer")
 				continue
 			}
 
@@ -282,6 +275,21 @@ func eventEmitter(event uintptr) (err error) {
 }
 
 func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
+	v.mux.Lock()
+	if v.processing {
+		v.mux.Unlock()
+		return
+	}
+
+	v.processing = true
+	v.mux.Unlock()
+
+	defer func() {
+		v.mux.Lock()
+		v.processing = false
+		v.mux.Unlock()
+	}()
+
 	samples := make([]float64, len(buf)/4)
 	for i := 0; i < len(buf); i += 4 {
 		v := float64(int32(binary.LittleEndian.Uint32(buf[i : i+4])))

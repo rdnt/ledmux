@@ -419,17 +419,6 @@ func (v *Visualizer) Stop() error {
 	return nil
 }
 
-func (v *Visualizer) initialize() error {
-	//cfg2sys, err := v.MatchDisplays(displays)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//fmt.Println(cfg2sys)
-
-	return nil
-}
-
 // matchDisplays tries to map a display entry from the system to one in the
 // config file. It should be re-run whenever the config file changes or a
 // display capturer becomes invalid, for example if an app enters fullscreen or
@@ -507,15 +496,6 @@ func New(opts ...Option) (*Visualizer, error) {
 	if v.displayRepo == nil {
 		return nil, fmt.Errorf("invalid display repository")
 	}
-
-	err := v.initialize()
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Println("@@@@@@@@@@@@@@")
-	fmt.Println(v.displayConfigs)
-	fmt.Println("@@@@@@@@@@@@@@")
 
 	v.events = make(chan visualizer.UpdateEvent)
 
