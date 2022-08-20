@@ -18,14 +18,13 @@ import (
 )
 
 type Visualizer struct {
-	leds           int
-	events         chan visualizer.UpdateEvent
-	cancel         context.CancelFunc
-	childCancel    context.CancelFunc
-	done           chan bool
-	lastSourceName string
-	segments       []Segment
-	maxLedCount    int
+	leds        int
+	events      chan visualizer.UpdateEvent
+	cancel      context.CancelFunc
+	childCancel context.CancelFunc
+	done        chan bool
+	segments    []Segment
+	maxLedCount int
 
 	config Config
 }
@@ -191,6 +190,7 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 
 	var isCapturing = true
 
+loop:
 	for {
 		if !isCapturing {
 			close(errorChan)
@@ -204,7 +204,7 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 		case <-ctx.Done():
 			isCapturing = false
 			<-errorChan
-			break
+			break loop
 		case err := <-errorChan:
 			if err != nil {
 				isCapturing = false
@@ -212,15 +212,18 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 			}
 
 			if err = acc.GetBuffer(&data, &availableFrameSize, &flags, &devicePosition, &qcpPosition); err != nil {
+				fmt.Println("error during get buffer")
 				continue
 			}
 
 			if availableFrameSize == 0 {
+				fmt.Println("availableFrameSize == 0")
 				continue
 			}
 
 			start := unsafe.Pointer(data)
 			if start == nil {
+				fmt.Println("start is nil pointer")
 				continue
 			}
 
@@ -334,11 +337,11 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 		var curr float64
 		// diffuse frequencies horizontally (just a little)
 		if i < len(freqs)-3 {
-			curr = freqs[i] + freqs[i+1] + freqs[i+2]
+			curr = freqs[i] + freqs[i+1]
 		} else {
-			curr = freqs[i] + freqs[i] + freqs[i]
+			curr = freqs[i] + freqs[i]
 		}
-		curr = (curr) / 3
+		curr = (curr) / 2
 
 		norm := normalize(curr, 0, max)
 
@@ -354,6 +357,13 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 		} else {
 			c = v.config.Color5
 		}
+
+		h, s, v := c.Hsv()
+
+		s = math.Min(max, 1)*0.25 + s*0.75
+		v = math.Min(v*1.1, 1)
+
+		c = colorful.Hsv(h, s, v)
 
 		r, g, b, _ := c.RGBA()
 
@@ -373,7 +383,7 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 	weightsTotal := 0.0
 
 	for i := 0; i < len(pixs); i++ {
-		w := float64(i*2 + len(pixs))
+		w := float64(i + len(pixs))
 		weights = append(weights, w)
 		weightsTotal += w
 	}
@@ -412,13 +422,13 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 
 		pix := pix4[:seg.Leds*4]
 
-		//if seg.Id == 0 {
-		//	out := "\n"
-		//	for i := 0; i < len(pix); i += 4 {
-		//		out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
-		//	}
-		//	fmt.Print(out)
-		//}
+		// if seg.Id == 0 {
+		// 	out := "\n"
+		// 	for i := 0; i < len(pix); i += 4 {
+		// 		out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
+		// 	}
+		// 	fmt.Print(out)
+		// }
 
 		segs = append(segs, visualizer.Segment{
 			Id:  seg.Id,
@@ -454,7 +464,7 @@ func New(opts Options) (*Visualizer, error) {
 	v.leds = opts.Leds
 	v.events = make(chan visualizer.UpdateEvent, len(v.segments)*8)
 
-	c1, _ := colorful.Hex("#331111")
+	c1, _ := colorful.Hex("#110022")
 	c2, _ := colorful.Hex("#602980")
 	c3, _ := colorful.Hex("#442968")
 	c4, _ := colorful.Hex("#2ffee1")
