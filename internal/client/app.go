@@ -25,8 +25,9 @@ type App struct {
 	Brightness int
 	BlackPoint int
 	Segments   []Segment
-	connMux    sync.Mutex
-	conn       *websocket.Conn
+
+	connMux sync.Mutex
+	conn    *websocket.Conn
 
 	Displays       video.DisplayRepository
 	DisplayConfigs [][]video.DisplayConfig
@@ -158,13 +159,6 @@ func (a *App) Start() error {
 	}
 
 	return nil
-
-	//err = a.reload()
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
-	//return a.ctl.SetMode(a.DefaultMode)
 }
 
 func (a *App) reload() error {
