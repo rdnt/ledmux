@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -24,6 +25,7 @@ type App struct {
 	Brightness int
 	BlackPoint int
 	Segments   []Segment
+	connMux    sync.Mutex
 	conn       *websocket.Conn
 
 	Displays       video.DisplayRepository
@@ -99,9 +101,19 @@ func New(opts ...Option) (*App, error) {
 
 	go func() {
 		for b := range a.ctl.Events() {
-			err := a.conn.WriteMessage(websocket.BinaryMessage, b)
+			a.connMux.Lock()
+			conn := a.conn
+			a.connMux.Unlock()
+
+			if conn == nil {
+				continue
+			}
+
+			err := conn.WriteMessage(websocket.BinaryMessage, b)
 			if err != nil {
-				fmt.Println(err)
+				a.connMux.Lock()
+				a.conn = nil
+				a.connMux.Unlock()
 			}
 		}
 	}()
@@ -111,17 +123,48 @@ func New(opts ...Option) (*App, error) {
 
 func (a *App) Start() error {
 	var err error
-	a.conn, _, err = websocket.DefaultDialer.Dial(a.ServerAddress, nil)
-	if err != nil {
-		return err
-	}
 
-	err = a.reload()
+	go func() {
+		for {
+			// try to re-establish connection if lost
+			time.Sleep(1 * time.Second)
+
+			a.connMux.Lock()
+			conn := a.conn
+			a.connMux.Unlock()
+
+			if conn == nil {
+				conn, _, err = websocket.DefaultDialer.Dial(a.ServerAddress, nil)
+				if err != nil {
+					continue
+				}
+
+				a.connMux.Lock()
+				a.conn = conn
+				a.connMux.Unlock()
+
+				err = a.reload()
+				if err != nil {
+					continue
+				}
+
+			}
+		}
+	}()
+
+	err = a.ctl.SetMode(a.DefaultMode)
 	if err != nil {
 		panic(err)
 	}
 
-	return a.ctl.SetMode(a.DefaultMode)
+	return nil
+
+	//err = a.reload()
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//return a.ctl.SetMode(a.DefaultMode)
 }
 
 func (a *App) reload() error {
@@ -144,16 +187,28 @@ func (a *App) reload() error {
 		return err
 	}
 
-	err = a.conn.WriteMessage(websocket.BinaryMessage, b)
-	if err != nil {
-		return err
+	a.connMux.Lock()
+	conn := a.conn
+	a.connMux.Unlock()
+
+	if conn != nil {
+		err = a.conn.WriteMessage(websocket.BinaryMessage, b)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (a *App) Stop() error {
-	a.conn.Close()
+	a.connMux.Lock()
+	conn := a.conn
+	a.connMux.Unlock()
+
+	if conn != nil {
+		conn.Close()
+	}
 
 	return a.ctl.SetMode(controller.Reset)
 }

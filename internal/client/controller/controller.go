@@ -11,7 +11,7 @@ import (
 
 type Controller struct {
 	leds       int
-	mode       Mode
+	Mode       Mode
 	visualizer visualizer.Visualizer
 	events     chan []byte
 
@@ -72,11 +72,11 @@ var Modes = map[string]Mode{
 }
 
 func (ctl *Controller) SetMode(mode Mode) error {
-	if mode == ctl.mode {
-		return fmt.Errorf("invalid mode")
+	if mode == ctl.Mode {
+		return fmt.Errorf("invalid Mode")
 	}
 
-	ctl.mode = mode
+	ctl.Mode = mode
 
 	if ctl.visualizer != nil {
 		err := ctl.visualizer.Stop()
