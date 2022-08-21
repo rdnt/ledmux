@@ -169,7 +169,6 @@ func (a *App) Start() error {
 }
 
 func (a *App) reload() error {
-	time.Sleep(1 * time.Second)
 	segments := []events.SegmentConfig{}
 
 	for _, s := range a.Segments {

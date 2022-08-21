@@ -434,13 +434,13 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 
 		pix := pix4[:seg.Leds*4]
 
-		// if seg.Id == 0 {
-		// 	out := "\n"
-		// 	for i := 0; i < len(pix); i += 4 {
-		// 		out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
-		// 	}
-		// 	fmt.Print(out)
-		// }
+		//if seg.Id == 0 {
+		//	out := "\n"
+		//	for i := 0; i < len(pix); i += 4 {
+		//		out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
+		//	}
+		//	fmt.Print(out)
+		//}
 
 		segs = append(segs, visualizer.Segment{
 			Id:  seg.Id,
