@@ -3,6 +3,7 @@ module ledctl3
 go 1.18
 
 require (
+	github.com/VividCortex/ewma v1.2.0
 	github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b
 	github.com/eripe970/go-dsp-utils v0.0.0-20220123162022-4563116e558a
 	github.com/getlantern/systray v1.2.1

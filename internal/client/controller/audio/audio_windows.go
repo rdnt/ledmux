@@ -275,6 +275,8 @@ func eventEmitter(event uintptr) (err error) {
 }
 
 func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
+	now := time.Now()
+
 	v.mux.Lock()
 	if v.processing {
 		v.mux.Unlock()
@@ -309,6 +311,7 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 		freqs = make([]float64, 882)
 	} else {
 		spectrum, _ := normalized.FrequencySpectrum() // never fails
+		// freqs length will be half of the samples length
 		freqs = spectrum.Spectrum
 	}
 
@@ -341,7 +344,8 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 
 	pix := []byte{}
 
-	for i := 0; i < v.maxLedCount; i++ {
+	// TODO: min func for ints
+	for i := 0; i < int(math.Min(float64(v.maxLedCount), float64(len(freqs)))); i++ {
 		var curr float64
 		// diffuse frequencies horizontally (just a little)
 		if i < len(freqs)-3 {
@@ -446,6 +450,7 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 
 	v.events <- visualizer.UpdateEvent{
 		Segments: segs,
+		Duration: time.Since(now),
 	}
 }
 

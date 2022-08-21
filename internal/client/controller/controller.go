@@ -2,7 +2,10 @@ package controller
 
 import (
 	"fmt"
+	"sync"
+	"time"
 
+	"github.com/VividCortex/ewma"
 	"github.com/vmihailenco/msgpack/v5"
 
 	"ledctl3/internal/client/visualizer"
@@ -18,10 +21,34 @@ type Controller struct {
 	displayVisualizer visualizer.Visualizer
 	audioVisualizer   visualizer.Visualizer
 	segmentCount      int
+
+	timingMux sync.Mutex
+	timing    timing
+}
+
+type timing struct {
+	process ewma.MovingAverage
+}
+
+type Statistics struct {
+	AverageProcessingTime time.Duration
+}
+
+func (ctl *Controller) Statistics() Statistics {
+	ctl.timingMux.Lock()
+	defer ctl.timingMux.Unlock()
+
+	return Statistics{
+		AverageProcessingTime: time.Duration(ctl.timing.process.Value()),
+	}
 }
 
 func New(opts ...Option) (*Controller, error) {
-	s := &Controller{}
+	s := &Controller{
+		timing: timing{
+			process: ewma.NewMovingAverage(100),
+		},
+	}
 
 	for _, opt := range opts {
 		err := opt(s)
@@ -102,6 +129,10 @@ func (ctl *Controller) SetMode(mode Mode) error {
 
 		go func() {
 			for evt := range ctl.visualizer.Events() {
+				ctl.timingMux.Lock()
+				ctl.timing.process.Add(float64(evt.Duration.Nanoseconds()))
+				ctl.timingMux.Unlock()
+
 				segs := []events.Segment{}
 
 				for _, seg := range evt.Segments {

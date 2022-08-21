@@ -1,5 +1,9 @@
 package visualizer
 
+import (
+	"time"
+)
+
 // Visualizer processes some input and transforms it to an output for the LED
 // strip segments.
 type Visualizer interface {
@@ -11,6 +15,7 @@ type Visualizer interface {
 // UpdateEvent is emitted whenever one or more segments need to be updated.
 type UpdateEvent struct {
 	Segments []Segment
+	Duration time.Duration
 }
 
 // Segment is an LED strip segment.

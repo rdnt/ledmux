@@ -119,6 +119,13 @@ func New(opts ...Option) (*App, error) {
 		}
 	}()
 
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			fmt.Printf("\r%s", a.ctl.Statistics().AverageProcessingTime)
+		}
+	}()
+
 	return a, nil
 }
 
