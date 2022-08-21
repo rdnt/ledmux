@@ -107,7 +107,7 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	}
 
 	wg.Wait()
-	time.Sleep(3 * time.Second)
+	//time.Sleep(3 * time.Second)
 
 	return nil
 }
@@ -122,6 +122,7 @@ func (v *Visualizer) Start() error {
 			select {
 			case <-ctx.Done():
 				fmt.Println("parent ctx done, exiting")
+				v.stopCapture()
 				v.done <- true
 				return
 			default:
