@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/lucasb-eyer/go-colorful"
 	"github.com/vmihailenco/msgpack/v5"
 
 	"ledctl3/internal/client/controller"
@@ -31,6 +32,9 @@ type App struct {
 
 	Displays       video.DisplayRepository
 	DisplayConfigs [][]video.DisplayConfig
+
+	Colors     []colorful.Color
+	WindowSize int
 
 	//cfg config.Config
 	//ip       string
@@ -85,17 +89,14 @@ func New(opts ...Option) (*App, error) {
 	audioVisualizer, err := audio.New(
 		audio.WithLedsCount(a.Leds),
 		audio.WithSegments(segs),
-		//audio.WithColors("#160016", "#0c499c", "#09969c", "#119011", "#fe4051", "#f10649"),
-		//audio.WithColors("#5c58b6", "#b957ce", "#5994ce", "#3a4e93"),
-		//audio.WithColors("#0b5293", "#00284a", "#a70075", "#f66dc2", "#eecbe6", "#9faaf1"),
-		audio.WithColors("#053f60", "#118aa6", "#8d3d72", "#ff67a8", "#d0395a", "#ffe7e7"),
+		audio.WithColors(a.Colors...),
+		audio.WithWindowSize(a.WindowSize),
 	)
 
 	a.ctl, err = controller.New(
 		controller.WithLedsCount(a.Leds),
 		controller.WithDisplayVisualizer(displayVisualizer),
 		controller.WithAudioVisualizer(audioVisualizer),
-
 		controller.WithSegmentsCount(len(segs)),
 	)
 	if err != nil {

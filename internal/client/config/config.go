@@ -15,7 +15,13 @@ type Config struct {
 	CaptureType string      `yaml:"captureType" json:"captureType"`
 	Server      Server      `yaml:"server" json:"server"`
 	Displays    [][]Display `yaml:"displays" json:"displays"`
+	Audio       AudioConfig `yaml:"audio" json:"audio"`
 	Segments    []Segment   `yaml:"segments" json:"segments"`
+}
+
+type AudioConfig struct {
+	Colors     []string `yaml:"colors" json:"colors"`
+	WindowSize int      `yaml:"windowSize" json:"windowSize"`
 }
 
 type Server struct {
@@ -157,6 +163,15 @@ func createDefault() (*Config, error) {
 					},
 				},
 			},
+		},
+		Audio: AudioConfig{
+			Colors: []string{
+				"#355c7d",
+				"#725a7c",
+				"#c66c86",
+				"#ff7582",
+			},
+			WindowSize: 80,
 		},
 	}
 

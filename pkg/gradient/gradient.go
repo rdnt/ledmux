@@ -32,20 +32,15 @@ func (gt Gradient) GetInterpolatedColor(t float64) colorful.Color {
 	return gt[len(gt)-1].Color
 }
 
-// New parses the hex-encoded (#RRGGBB) colors into a gradient.
-func New(colors ...string) (Gradient, error) {
+// New parses the colors into a linearly-interpolated gradient
+func New(colors ...colorful.Color) (Gradient, error) {
 	if len(colors) < 2 {
 		return Gradient{}, errors.New("minimum two colors required")
 	}
 
 	g := Gradient{}
 
-	for i, hex := range colors {
-		clr, err := colorful.Hex(hex)
-		if err != nil {
-			return Gradient{}, err
-		}
-
+	for i, clr := range colors {
 		g = append(g, Keypoint{
 			Color:    clr,
 			Position: float64(i) / float64(len(colors)-1),

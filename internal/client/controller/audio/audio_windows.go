@@ -26,7 +26,7 @@ type Visualizer struct {
 	mux sync.Mutex
 
 	leds     int
-	colors   []string
+	colors   []colorful.Color
 	segments []Segment
 
 	events      chan visualizer.UpdateEvent
@@ -37,7 +37,8 @@ type Visualizer struct {
 
 	processing bool
 
-	gradient gradient.Gradient
+	gradient   gradient.Gradient
+	windowSize int
 }
 
 func (v *Visualizer) Start() error {

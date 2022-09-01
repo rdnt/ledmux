@@ -2,6 +2,8 @@ package audio
 
 import (
 	"errors"
+
+	"github.com/lucasb-eyer/go-colorful"
 )
 
 type Option func(v *Visualizer) error
@@ -34,13 +36,20 @@ func WithSegments(segs []Segment) Option {
 }
 
 // WithColors accepts an array of hex colors in the form #RRGGBB
-func WithColors(colors ...string) Option {
+func WithColors(colors ...colorful.Color) Option {
 	return func(v *Visualizer) error {
 		if len(colors) < 2 {
 			return errors.New("minimum two colors required")
 		}
 
 		v.colors = colors
+		return nil
+	}
+}
+
+func WithWindowSize(size int) Option {
+	return func(v *Visualizer) error {
+		v.windowSize = size
 		return nil
 	}
 }

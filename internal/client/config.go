@@ -1,7 +1,10 @@
 package client
 
 import (
+	"errors"
 	"fmt"
+
+	"github.com/lucasb-eyer/go-colorful"
 
 	"ledctl3/internal/client/config"
 	"ledctl3/internal/client/controller"
@@ -80,6 +83,11 @@ func (a *App) validateConfig(c config.Config) error {
 		return err
 	}
 
+	err = a.validateAudioConfig(c.Audio)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -148,6 +156,24 @@ func (a *App) validateDisplayConfigs(displayConfigs [][]config.Display) error {
 				return fmt.Errorf("invalid bounds for display %d (to)", i)
 			}
 		}
+	}
+
+	return nil
+}
+func (a *App) validateAudioConfig(cfg config.AudioConfig) error {
+	if len(cfg.Colors) < 2 {
+		return errors.New("a minimum of two colors are required")
+	}
+
+	for _, hex := range cfg.Colors {
+		_, err := colorful.Hex(hex)
+		if err != nil {
+			return err
+		}
+	}
+
+	if cfg.WindowSize < 1 || cfg.WindowSize > 1000 {
+		return errors.New("averaging window must be at least 1 and no more than 1000 frames")
 	}
 
 	return nil
@@ -221,6 +247,18 @@ func (a *App) applyConfig(c config.Config) (err error) {
 
 		a.DisplayConfigs = append(a.DisplayConfigs, parsedCfg)
 	}
+
+	a.Colors = []colorful.Color{}
+	for _, hex := range c.Audio.Colors {
+		clr, err := colorful.Hex(hex)
+		if err != nil {
+			return err
+		}
+
+		a.Colors = append(a.Colors, clr)
+	}
+
+	a.WindowSize = c.Audio.WindowSize
 
 	return nil
 }
