@@ -373,7 +373,7 @@ func (v *Visualizer) process(samples []float64) {
 	}
 
 	pixs = append(pixs, pix)
-	if len(pixs) > 100 {
+	if len(pixs) > v.windowSize {
 		pixs = pixs[1:]
 	}
 

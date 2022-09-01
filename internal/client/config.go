@@ -260,5 +260,6 @@ func (a *App) applyConfig(c config.Config) (err error) {
 
 	a.WindowSize = c.Audio.WindowSize
 
+	fmt.Println(a.Colors, a.WindowSize)
 	return nil
 }
