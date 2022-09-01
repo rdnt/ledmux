@@ -73,6 +73,9 @@ func main() {
 			}
 		}()
 	}, func() {
+		// clear the tray icon
+		tray.Quit()
+
 		exit <- os.Interrupt
 	})
 

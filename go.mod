@@ -5,7 +5,6 @@ go 1.18
 require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b
-	github.com/eripe970/go-dsp-utils v0.0.0-20220123162022-4563116e558a
 	github.com/getlantern/systray v1.2.1
 	github.com/go-ole/go-ole v1.2.6
 	github.com/google/uuid v1.2.0
@@ -18,7 +17,9 @@ require (
 	github.com/moutend/go-wca v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rpi-ws281x/rpi-ws281x-go v1.0.8
+	github.com/sgreben/piecewiselinear v1.1.1
 	github.com/vmihailenco/msgpack/v5 v5.3.5
+	gonum.org/v1/gonum v0.11.0
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 )
 
@@ -31,12 +32,8 @@ require (
 	github.com/getlantern/hidden v0.0.0-20190325191715-f02dbb02be55 // indirect
 	github.com/getlantern/ops v0.0.0-20190325191751-d70cb0d6f85f // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
-	github.com/goccmack/godsp v0.1.1 // indirect
-	github.com/goccmack/goutil v0.4.0 // indirect
 	github.com/jezek/xgb v0.0.0-20210312150743-0e0f116e1240 // indirect
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e // indirect
-	github.com/mattetti/audio v0.0.0-20190404201502-c6aebeb78429 // indirect
-	github.com/mjibson/go-dsp v0.0.0-20180508042940-11479a337f12 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect

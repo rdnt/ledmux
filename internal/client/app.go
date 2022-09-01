@@ -83,10 +83,12 @@ func New(opts ...Option) (*App, error) {
 	}
 
 	audioVisualizer, err := audio.New(
-		audio.Options{
-			Leds:     a.Leds,
-			Segments: segs,
-		},
+		audio.WithLedsCount(a.Leds),
+		audio.WithSegments(segs),
+		//audio.WithColors("#160016", "#0c499c", "#09969c", "#119011", "#fe4051", "#f10649"),
+		//audio.WithColors("#5c58b6", "#b957ce", "#5994ce", "#3a4e93"),
+		//audio.WithColors("#0b5293", "#00284a", "#a70075", "#f66dc2", "#eecbe6", "#9faaf1"),
+		audio.WithColors("#053f60", "#118aa6", "#8d3d72", "#ff67a8", "#d0395a", "#ffe7e7"),
 	)
 
 	a.ctl, err = controller.New(
@@ -119,12 +121,12 @@ func New(opts ...Option) (*App, error) {
 		}
 	}()
 
-	go func() {
-		for {
-			time.Sleep(1 * time.Second)
-			fmt.Printf("\r%s", a.ctl.Statistics().AverageProcessingTime)
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		time.Sleep(1 * time.Second)
+	// 		fmt.Printf("\r%s", a.ctl.Statistics().AverageProcessingTime)
+	// 	}
+	// }()
 
 	return a, nil
 }

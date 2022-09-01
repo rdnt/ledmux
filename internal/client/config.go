@@ -103,7 +103,7 @@ func (a *App) validateServer(srv config.Server) error {
 		return fmt.Errorf("invalid server port")
 	}
 
-	if srv.Leds < 1 || srv.Leds > 1024 {
+	if srv.Leds < 1 || srv.Leds > 2048 {
 		return fmt.Errorf("invalid server LED count")
 	}
 

@@ -2,43 +2,42 @@ package audio
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"math"
+	"math/cmplx"
 	"sync"
 	"time"
 	"unsafe"
 
-	"github.com/eripe970/go-dsp-utils"
 	"github.com/go-ole/go-ole"
+	"github.com/gookit/color"
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/moutend/go-wca/pkg/wca"
 	"github.com/pkg/errors"
+	"github.com/sgreben/piecewiselinear"
+	"gonum.org/v1/gonum/dsp/fourier"
+	"gonum.org/v1/gonum/dsp/window"
 
 	"ledctl3/internal/client/visualizer"
+	"ledctl3/pkg/gradient"
 )
 
 type Visualizer struct {
-	mux         sync.Mutex
-	leds        int
+	mux sync.Mutex
+
+	leds     int
+	colors   []string
+	segments []Segment
+
 	events      chan visualizer.UpdateEvent
 	cancel      context.CancelFunc
 	childCancel context.CancelFunc
 	done        chan bool
-	segments    []Segment
 	maxLedCount int
 
 	processing bool
 
-	config Config
-}
-
-type Config struct {
-	Color1 colorful.Color
-	Color2 colorful.Color
-	Color3 colorful.Color
-	Color4 colorful.Color
-	Color5 colorful.Color
+	gradient gradient.Gradient
 }
 
 func (v *Visualizer) Start() error {
@@ -230,7 +229,13 @@ loop:
 
 			offset += lim
 
-			go v.processBuf(buf, float64(wfx.NSamplesPerSec))
+			samples := make([]float64, len(buf)/4)
+			for i := 0; i < len(buf); i += 4 {
+				v := float64(readInt32(buf[i : i+4]))
+				samples = append(samples, v)
+			}
+
+			go v.process(samples)
 
 			if err = acc.ReleaseBuffer(availableFrameSize); err != nil {
 				return errors.WithMessage(err, "failed to ReleaseBuffer")
@@ -259,7 +264,6 @@ func watchEvent(ctx context.Context, event uintptr) (err error) {
 		err = ctx.Err()
 		return
 	}
-	return
 }
 
 func eventEmitter(event uintptr) (err error) {
@@ -274,7 +278,25 @@ func eventEmitter(event uintptr) (err error) {
 	return
 }
 
-func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
+// readInt32 reads a signed integer from a byte slice. only a slice with len(4)
+// should be passed. equivalent of int32(binary.LittleEndian.Uint32(b))
+func readInt32(b []byte) int32 {
+	return int32(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24)
+}
+
+func SpanLog(min, max float64, nPoints int) []float64 {
+	X := make([]float64, nPoints)
+	min, max = math.Min(max, min), math.Max(max, min)
+	d := max - min
+	for i := range X {
+		v := min + d*(float64(i)/float64(nPoints-1))
+		v = math.Pow(v, 0.5)
+		X[i] = v
+	}
+	return X
+}
+
+func (v *Visualizer) process(samples []float64) {
 	now := time.Now()
 
 	v.mux.Lock()
@@ -292,96 +314,59 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 		v.mux.Unlock()
 	}()
 
-	samples := make([]float64, len(buf)/4)
-	for i := 0; i < len(buf); i += 4 {
-		v := float64(int32(binary.LittleEndian.Uint32(buf[i : i+4])))
+	fft := fourier.NewFFT(len(samples))
+	coeff := fft.Coefficients(nil, window.Hamming(samples))
 
-		samples = append(samples, v)
+	freqs := []float64{}
+	var maxfreq float64
+	for _, c := range coeff {
+		freqs = append(freqs, cmplx.Abs(c))
+		if cmplx.Abs(c) > maxfreq {
+			maxfreq = cmplx.Abs(c)
+		}
 	}
 
-	signal := dsp.Signal{
-		SampleRate: samplesPerSec,
-		Signal:     samples,
+	for i, f := range freqs {
+		norm := normalize(float64(int(f)), 0, maxfreq)
+		freqs[i] = norm
 	}
 
-	var freqs []float64
+	// Only keep the first half of the fft
+	freqs = freqs[:len(freqs)/2]
 
-	normalized, err := signal.Normalize()
-	if err != nil {
-		freqs = make([]float64, 882)
-	} else {
-		spectrum, _ := normalized.FrequencySpectrum() // never fails
-		// freqs length will be half of the samples length
-		freqs = spectrum.Spectrum
-	}
+	// Scale the frequencies so that low ones are more pronounced.
+	if len(freqs) > v.maxLedCount {
+		f := piecewiselinear.Function{Y: freqs}
+		f.X = SpanLog(0, 1, len(f.Y))
 
-	lows := []float64{}
-
-	// make the low frequencies more prominent
-	lows = append(lows, freqs[0])
-	lows = append(lows, freqs[1])
-	lows = append(lows, freqs[1])
-	lows = append(lows, freqs[1])
-	lows = append(lows, freqs[2])
-	lows = append(lows, freqs[2])
-	lows = append(lows, freqs[2])
-	lows = append(lows, freqs[3])
-	lows = append(lows, freqs[3])
-	lows = append(lows, freqs[3])
-	lows = append(lows, freqs[4])
-	lows = append(lows, freqs[4])
-	lows = append(lows, freqs[5])
-	lows = append(lows, freqs[5])
-
-	freqs = append(lows, freqs[6:]...)
-
-	max := 0.0
-	for _, freq := range freqs {
-		if math.Abs(freq) > max {
-			max = math.Abs(freq)
+		freqs = make([]float64, v.maxLedCount)
+		for i := 0; i < v.maxLedCount; i++ {
+			freqs[i] = f.At(float64(i) / float64(v.maxLedCount-1))
 		}
 	}
 
 	pix := []byte{}
 
-	// TODO: min func for ints
-	for i := 0; i < int(math.Min(float64(v.maxLedCount), float64(len(freqs)))); i++ {
-		var curr float64
-		// diffuse frequencies horizontally (just a little)
-		if i < len(freqs)-3 {
-			curr = freqs[i] + freqs[i+1]
-		} else {
-			curr = freqs[i] + freqs[i]
-		}
-		curr = (curr) / 2
+	maxLeds := v.maxLedCount
 
-		norm := normalize(curr, 0, max)
+	for i := 0; i < maxLeds; i++ {
+		freq := freqs[i]
 
-		var c colorful.Color
-		if norm < 0.3 {
-			c = v.config.Color1
-		} else if norm < 0.45 {
-			c = v.config.Color2
-		} else if norm < 0.8 {
-			c = v.config.Color3
-		} else if norm < 0.9 {
-			c = v.config.Color4
-		} else {
-			c = v.config.Color5
-		}
+		c := v.gradient.GetInterpolatedColor(freq)
 
-		h, s, v := c.Hsv()
+		hue, sat, val := c.Hsl()
 
-		s = math.Min(max, 1)*0.25 + s*0.75
-		v = math.Min(v*1.1, 1)
+		val = math.Sqrt(1 - math.Pow(freq-1, 2))
+		val = math.Min(val, 1)
+		val = math.Max(val, 0.25)
 
-		c = colorful.Hsv(h, s, v)
+		c = colorful.Hsv(hue, sat, val)
 
 		r, g, b, _ := c.RGBA()
 
-		r = uint32(math.Min(float64(r/256), 255))
-		g = uint32(math.Min(float64(g/256), 255))
-		b = uint32(math.Min(float64(b/256), 255))
+		r = r >> 8
+		g = g >> 8
+		b = b >> 8
 
 		pix = append(pix, []byte{uint8(r), uint8(g), uint8(b), 0xFF}...)
 	}
@@ -395,7 +380,9 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 	weightsTotal := 0.0
 
 	for i := 0; i < len(pixs); i++ {
-		w := float64(i + len(pixs))
+		// for each history item
+		w := float64((i+1)*(i+1) + len(pixs))
+
 		weights = append(weights, w)
 		weightsTotal += w
 	}
@@ -422,6 +409,8 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 		for i := 0; i < length; i += 4 {
 			offset := i
 
+			// TODO: do the mirroring beforehand (not with the 2nd part of the fft...)
+			//  by limiting max to maxleds/2 and then flipping the first half into the second
 			if i >= length/2 {
 				offset = length - 4 - i
 			}
@@ -434,13 +423,14 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 
 		pix := pix4[:seg.Leds*4]
 
-		//if seg.Id == 0 {
-		//	out := "\n"
-		//	for i := 0; i < len(pix); i += 4 {
-		//		out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
-		//	}
-		//	fmt.Print(out)
-		//}
+		if seg.Id == 0 {
+			out := "\r"
+			//out := "\n"
+			for i := 0; i < len(pix); i += 4 {
+				out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
+			}
+			fmt.Print(out)
+		}
 
 		segs = append(segs, visualizer.Segment{
 			Id:  seg.Id,
@@ -454,6 +444,7 @@ func (v *Visualizer) processBuf(buf []byte, samplesPerSec float64) {
 	}
 }
 
+// normalize scales a value from min,max to 0,1
 func normalize(val, min, max float64) float64 {
 	if max == min {
 		return max
@@ -464,32 +455,22 @@ func normalize(val, min, max float64) float64 {
 
 var pixs [][]byte
 
-func New(opts Options) (*Visualizer, error) {
-	v := &Visualizer{}
+func New(opts ...Option) (v *Visualizer, err error) {
+	v = new(Visualizer)
 
-	for _, seg := range opts.Segments {
-		if seg.Leds > v.maxLedCount {
-			v.maxLedCount = seg.Leds
+	for _, opt := range opts {
+		err := opt(v)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	v.segments = opts.Segments
-	v.leds = opts.Leds
-	v.events = make(chan visualizer.UpdateEvent, len(v.segments)*8)
-
-	c1, _ := colorful.Hex("#110022")
-	c2, _ := colorful.Hex("#602980")
-	c3, _ := colorful.Hex("#442968")
-	c4, _ := colorful.Hex("#2ffee1")
-	c5, _ := colorful.Hex("#ea267a")
-
-	v.config = Config{
-		Color1: c1,
-		Color2: c2,
-		Color3: c3,
-		Color4: c4,
-		Color5: c5,
+	v.gradient, err = gradient.New(v.colors...)
+	if err != nil {
+		return nil, err
 	}
+
+	v.events = make(chan visualizer.UpdateEvent, len(v.segments)*8)
 
 	return v, nil
 }

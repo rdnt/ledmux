@@ -1,6 +1,10 @@
 package audio
 
-type Option func(p *Visualizer) error
+import (
+	"errors"
+)
+
+type Option func(v *Visualizer) error
 
 type Options struct {
 	Leds     int
@@ -8,23 +12,35 @@ type Options struct {
 }
 
 func WithLedsCount(leds int) Option {
-	return func(p *Visualizer) error {
-		p.leds = leds
+	return func(v *Visualizer) error {
+		v.leds = leds
 		return nil
 	}
 }
 
 func WithSegments(segs []Segment) Option {
-	return func(p *Visualizer) error {
-		p.maxLedCount = 0
+	return func(v *Visualizer) error {
+		v.maxLedCount = 0
 
 		for _, seg := range segs {
-			if seg.Leds > p.maxLedCount {
-				p.maxLedCount = seg.Leds
+			if seg.Leds > v.maxLedCount {
+				v.maxLedCount = seg.Leds
 			}
 		}
 
-		p.segments = segs
+		v.segments = segs
+		return nil
+	}
+}
+
+// WithColors accepts an array of hex colors in the form #RRGGBB
+func WithColors(colors ...string) Option {
+	return func(v *Visualizer) error {
+		if len(colors) < 2 {
+			return errors.New("minimum two colors required")
+		}
+
+		v.colors = colors
 		return nil
 	}
 }
