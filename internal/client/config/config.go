@@ -91,9 +91,9 @@ func (c *Config) Save() error {
 
 func Load() (*Config, error) {
 	validCfgs := map[string]string{
-		"config.json": "json",
-		"config.yaml": "yaml",
-		"config.yml":  "yaml",
+		"ledctl.json": "json",
+		"ledctl.yaml": "yaml",
+		"ledctl.yml":  "yaml",
 	}
 
 	for name, format := range validCfgs {
@@ -180,7 +180,7 @@ func createDefault() (*Config, error) {
 		return nil, err
 	}
 
-	err = os.WriteFile("config.json", b, 0644)
+	err = os.WriteFile("ledctl.json", b, 0644)
 	if err != nil {
 		return nil, err
 	}

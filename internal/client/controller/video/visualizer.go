@@ -344,8 +344,7 @@ func getBounds(edgePix []byte, offset, size int) []byte {
 
 // getEdges decodes the pixel data from the specified image, stores the
 // border pixels in four arrays, averages the borders based on the specified
-// length of the strip, sets the operation mode to 'A' (Ambilight) and returns
-// the color data as a bytes array
+// length of the strip and returns the color data as a bytes array
 func getEdges(pix []byte, width int, height int) []byte {
 	// index from stride and coords: y*Stride + x*4
 	// Initialize new waitgroup
