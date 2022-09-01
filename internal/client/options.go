@@ -2,10 +2,10 @@ package client
 
 import (
 	"fmt"
+
 	"ledctl3/internal/client/config"
-	"ledctl3/internal/client/controller/ambilight/capturer/bitblt"
-	"ledctl3/internal/client/controller/ambilight/capturer/dxgi"
-	"ledctl3/internal/client/controller/ambilight/capturer/scrap"
+	"ledctl3/internal/client/controller/video/capturer/bitblt"
+	"ledctl3/internal/client/controller/video/capturer/dxgi"
 )
 
 type Option func(*App) error
@@ -86,18 +86,13 @@ func WithDisplayCapturer(capturer CapturerType) Option {
 
 		switch capturer {
 		case DXGI:
-			a.displayRepository, err = dxgi.New()
+			a.Displays, err = dxgi.New()
 			if err != nil {
 				return err
 			}
 		case BitBlt:
-			a.displayRepository = bitblt.New()
+			a.Displays = bitblt.New()
 
-		case Scrap:
-			a.displayRepository, err = scrap.New()
-			if err != nil {
-				return err
-			}
 		default:
 			return fmt.Errorf("invalid capturer")
 		}

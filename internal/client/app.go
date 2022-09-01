@@ -2,17 +2,21 @@ package client
 
 import (
 	"fmt"
+	"sync"
+	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/lucasb-eyer/go-colorful"
 	"github.com/vmihailenco/msgpack/v5"
+
 	"ledctl3/internal/client/controller"
-	"ledctl3/internal/client/controller/ambilight"
-	"ledctl3/internal/client/interfaces"
+	"ledctl3/internal/client/controller/audio"
+	"ledctl3/internal/client/controller/video"
 	"ledctl3/internal/pkg/events"
-	"ledctl3/pkg/udp"
 )
 
 type App struct {
 	DefaultMode controller.Mode
-	BlackPoint  int
 
 	Host       string
 	Port       int
@@ -20,8 +24,17 @@ type App struct {
 	StripType  StripType
 	GpioPin    int
 	Brightness int
+	BlackPoint int
+	Segments   []Segment
 
-	Displays []ambilight.DisplayConfig
+	connMux sync.Mutex
+	conn    *websocket.Conn
+
+	Displays       video.DisplayRepository
+	DisplayConfigs [][]video.DisplayConfig
+
+	Colors     []colorful.Color
+	WindowSize int
 
 	//cfg config.Config
 	//ip       string
@@ -29,11 +42,16 @@ type App struct {
 	//mode     string
 	//capturer string
 
-	ctl               *controller.Controller
-	conn              udp.Client
-	displayRepository interfaces.DisplayRepository
-	displayVisualizer interfaces.Visualizer
-	audioVisualizer   interfaces.Visualizer
+	ctl           *controller.Controller
+	ServerAddress string
+
+	//displayVisualizer visualizer.Visualizer
+	//audioVisualizer   visualizer.Visualizer
+}
+
+type Segment struct {
+	Id   int
+	Leds int
 }
 
 func New(opts ...Option) (*App, error) {
@@ -47,24 +65,39 @@ func New(opts ...Option) (*App, error) {
 	}
 
 	var err error
-	a.conn, err = udp.NewClient(fmt.Sprintf("%s:%d", a.Host, a.Port))
-	if err != nil {
-		return nil, err
-	}
+	addr := fmt.Sprintf("ws://%s:%d/ws", a.Host, a.Port)
 
-	a.displayVisualizer, err = ambilight.New(
-		ambilight.WithLedsCount(a.Leds),
-		ambilight.WithDisplayRepository(a.displayRepository),
-		ambilight.WithDisplayConfig(a.Displays),
+	a.ServerAddress = addr
+
+	displayVisualizer, err := video.New(
+		video.WithLedsCount(a.Leds),
+		video.WithDisplayRepository(a.Displays),
+		video.WithDisplayConfig(a.DisplayConfigs), // TODO @@@@
 	)
 	if err != nil {
 		return nil, err
 	}
 
+	segs := []audio.Segment{}
+	for _, seg := range a.Segments {
+		segs = append(segs, audio.Segment{
+			Id:   seg.Id,
+			Leds: seg.Leds,
+		})
+	}
+
+	audioVisualizer, err := audio.New(
+		audio.WithLedsCount(a.Leds),
+		audio.WithSegments(segs),
+		audio.WithColors(a.Colors...),
+		audio.WithWindowSize(a.WindowSize),
+	)
+
 	a.ctl, err = controller.New(
 		controller.WithLedsCount(a.Leds),
-		controller.WithDisplayVisualizer(a.displayVisualizer),
-		controller.WithAudioVisualizer(a.audioVisualizer),
+		controller.WithDisplayVisualizer(displayVisualizer),
+		controller.WithAudioVisualizer(audioVisualizer),
+		controller.WithSegmentsCount(len(segs)),
 	)
 	if err != nil {
 		return nil, err
@@ -72,32 +105,113 @@ func New(opts ...Option) (*App, error) {
 
 	go func() {
 		for b := range a.ctl.Events() {
-			err = a.conn.Send(b)
+			a.connMux.Lock()
+			conn := a.conn
+			a.connMux.Unlock()
+
+			if conn == nil {
+				continue
+			}
+
+			err := conn.WriteMessage(websocket.BinaryMessage, b)
 			if err != nil {
-				fmt.Println(err)
+				a.connMux.Lock()
+				a.conn = nil
+				a.connMux.Unlock()
 			}
 		}
 	}()
+
+	// go func() {
+	// 	for {
+	// 		time.Sleep(1 * time.Second)
+	// 		fmt.Printf("\r%s", a.ctl.Statistics().AverageProcessingTime)
+	// 	}
+	// }()
 
 	return a, nil
 }
 
 func (a *App) Start() error {
-	e := events.NewReloadEvent(a.Leds, string(a.StripType), a.GpioPin, a.Brightness)
+	var err error
 
-	b, err := msgpack.Marshal(e)
+	go func() {
+		for {
+			// try to re-establish connection if lost
+			time.Sleep(1 * time.Second)
+
+			a.connMux.Lock()
+			conn := a.conn
+			a.connMux.Unlock()
+
+			if conn == nil {
+				conn, _, err = websocket.DefaultDialer.Dial(a.ServerAddress, nil)
+				if err != nil {
+					continue
+				}
+
+				a.connMux.Lock()
+				a.conn = conn
+				a.connMux.Unlock()
+
+				err = a.reload()
+				if err != nil {
+					continue
+				}
+
+			}
+		}
+	}()
+
+	err = a.ctl.SetMode(a.DefaultMode)
 	if err != nil {
 		panic(err)
 	}
 
-	err = a.conn.Send(b)
-	if err != nil {
-		fmt.Println(err)
+	return nil
+}
+
+func (a *App) reload() error {
+	segments := []events.SegmentConfig{}
+
+	for _, s := range a.Segments {
+		segments = append(
+			segments, events.SegmentConfig{
+				Id:   s.Id,
+				Leds: s.Leds,
+			},
+		)
 	}
 
-	return a.ctl.SetMode(a.DefaultMode)
+	e := events.NewReloadEvent(a.Leds, string(a.StripType), a.GpioPin, a.Brightness, segments)
+
+	b, err := msgpack.Marshal(e)
+	if err != nil {
+		return err
+	}
+
+	a.connMux.Lock()
+	conn := a.conn
+	a.connMux.Unlock()
+
+	if conn != nil {
+		err = a.conn.WriteMessage(websocket.BinaryMessage, b)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (a *App) Stop() error {
+	a.connMux.Lock()
+	conn := a.conn
+	a.connMux.Unlock()
+
+	if conn != nil {
+		conn.Close()
+	}
+
 	return a.ctl.SetMode(controller.Reset)
 }

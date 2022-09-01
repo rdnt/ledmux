@@ -25,6 +25,11 @@ func (s *server) Receive() chan []byte {
 				return
 			}
 
+			if n == 0 {
+				fmt.Print("i")
+				continue
+			}
+
 			ch <- b[:n]
 		}
 	}()
@@ -33,7 +38,13 @@ func (s *server) Receive() chan []byte {
 }
 
 func (s *server) Close() error {
-	return s.conn.Close()
+	if s.conn == nil {
+		return nil
+	}
+
+	err := s.conn.Close()
+	s.conn = nil
+	return err
 }
 
 func NewServer(address string) (*server, error) {

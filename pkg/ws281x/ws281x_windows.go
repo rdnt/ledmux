@@ -1,3 +1,4 @@
+//go:build (!linux && !darwin) || !cgo
 // +build !linux,!darwin !cgo
 
 package ws281x
@@ -27,22 +28,6 @@ func Init(_ int, _ int, _ int, _ string) (*Engine, error) {
 		wg:   &wg,
 		stop: stop,
 	}, nil
-}
-
-// Add adds a delta of 1 to the waitgroup counter
-func (ws *Engine) Add() bool {
-	if ws.rendering {
-		return false
-	}
-	ws.rendering = true
-	ws.wg.Add(1)
-	return true
-}
-
-// Done decrements the waitgroup counter by one
-func (ws *Engine) Done() {
-	ws.wg.Done()
-	ws.rendering = false
 }
 
 // Cancel returns the stop channel
@@ -76,11 +61,12 @@ func (*Engine) Clear() error {
 
 // Render placeholder
 func (*Engine) Render() error {
+	//fmt.Println()
 	return nil
 }
 
 // SetLedColor placeholder
 func (*Engine) SetLedColor(id int, r uint8, g uint8, b uint8) error {
-	//fmt.Println("set led", id, r, g, b)
+	//color.RGB(r, g, b, true).Print(" ")
 	return nil
 }

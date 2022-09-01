@@ -1,23 +1,54 @@
 package controller
 
 import (
+	"fmt"
+	"sync"
+	"time"
+
+	"github.com/VividCortex/ewma"
 	"github.com/vmihailenco/msgpack/v5"
-	"ledctl3/internal/client/interfaces"
+
+	"ledctl3/internal/client/visualizer"
 	"ledctl3/internal/pkg/events"
 )
 
 type Controller struct {
 	leds       int
-	mode       Mode
-	visualizer interfaces.Visualizer
+	Mode       Mode
+	visualizer visualizer.Visualizer
 	events     chan []byte
 
-	displayVisualizer interfaces.Visualizer
-	audioVisualizer   interfaces.Visualizer
+	displayVisualizer visualizer.Visualizer
+	audioVisualizer   visualizer.Visualizer
+	segmentCount      int
+
+	timingMux sync.Mutex
+	timing    timing
+}
+
+type timing struct {
+	process ewma.MovingAverage
+}
+
+type Statistics struct {
+	AverageProcessingTime time.Duration
+}
+
+func (ctl *Controller) Statistics() Statistics {
+	ctl.timingMux.Lock()
+	defer ctl.timingMux.Unlock()
+
+	return Statistics{
+		AverageProcessingTime: time.Duration(ctl.timing.process.Value()),
+	}
 }
 
 func New(opts ...Option) (*Controller, error) {
-	s := &Controller{}
+	s := &Controller{
+		timing: timing{
+			process: ewma.NewMovingAverage(100),
+		},
+	}
 
 	for _, opt := range opts {
 		err := opt(s)
@@ -26,22 +57,22 @@ func New(opts ...Option) (*Controller, error) {
 		}
 	}
 
-	s.events = make(chan []byte)
+	s.events = make(chan []byte, s.segmentCount)
 
 	return s, nil
 }
 
-func (s *Controller) Start() error {
+func (ctl *Controller) Start() error {
 	return nil
 }
 
-func (s *Controller) Events() chan []byte {
-	return s.events
+func (ctl *Controller) Events() chan []byte {
+	return ctl.events
 }
 
-func (s *Controller) Stop() error {
-	if s.visualizer != nil {
-		return s.visualizer.Stop()
+func (ctl *Controller) Stop() error {
+	if ctl.visualizer != nil {
+		return ctl.visualizer.Stop()
 	}
 
 	return nil
@@ -50,66 +81,75 @@ func (s *Controller) Stop() error {
 type Mode string
 
 const (
-	Reset     Mode = "reset"
-	Reload    Mode = "reload"
-	Ambilight Mode = "ambilight"
-	AudioViz  Mode = "audioviz"
-	Rainbow   Mode = "rainbow"
-	Static    Mode = "static"
+	Reset   Mode = "reset"
+	Reload  Mode = "reload"
+	Video   Mode = "video"
+	Audio   Mode = "audio"
+	Rainbow Mode = "rainbow"
+	Static  Mode = "static"
 )
 
 var Modes = map[string]Mode{
-	"reset":     Reset,
-	"reload":    Reload,
-	"ambilight": Ambilight,
-	"audioviz":  AudioViz,
-	"rainbow":   Rainbow,
-	"static":    Static,
+	"reset":   Reset,
+	"reload":  Reload,
+	"video":   Video,
+	"audio":   Audio,
+	"rainbow": Rainbow,
+	"static":  Static,
 }
 
-func (s *Controller) SetMode(mode Mode) error {
-	if mode == s.mode {
-		return nil
+func (ctl *Controller) SetMode(mode Mode) error {
+	if mode == ctl.Mode {
+		return fmt.Errorf("invalid Mode")
 	}
 
-	s.mode = mode
+	ctl.Mode = mode
 
-	if s.visualizer != nil {
-		err := s.visualizer.Stop()
+	if ctl.visualizer != nil {
+		err := ctl.visualizer.Stop()
 		if err != nil {
 			return err
 		}
 	}
 
 	switch mode {
-	case Ambilight:
-		s.visualizer = s.displayVisualizer
-	case AudioViz:
-		s.visualizer = s.audioVisualizer
+	case Video:
+		ctl.visualizer = ctl.displayVisualizer
+	case Audio:
+		ctl.visualizer = ctl.audioVisualizer
 	case Rainbow, Static:
-		s.visualizer = nil
+		ctl.visualizer = nil
 	}
 
-	if s.visualizer != nil {
-		err := s.visualizer.Start()
+	if ctl.visualizer != nil {
+		err := ctl.visualizer.Start()
 		if err != nil {
 			return err
 		}
 
 		go func() {
-			for evt := range s.visualizer.Events() {
-				if evt.Display.Id() == 1 {
-					continue
+			for evt := range ctl.visualizer.Events() {
+				ctl.timingMux.Lock()
+				ctl.timing.process.Add(float64(evt.Duration.Nanoseconds()))
+				ctl.timingMux.Unlock()
+
+				segs := []events.Segment{}
+
+				for _, seg := range evt.Segments {
+					segs = append(segs, events.Segment{
+						Id:  seg.Id,
+						Pix: seg.Pix,
+					})
 				}
-				// TODO: associate display with strip here
-				e := events.NewAmbilightEvent(evt.Display.Id(), evt.Data)
+
+				e := events.NewAmbilightEvent(segs)
 
 				b, err := msgpack.Marshal(e)
 				if err != nil {
 					panic(err)
 				}
 
-				s.events <- b
+				ctl.events <- b
 			}
 		}()
 	}

@@ -1,14 +1,16 @@
 package client
 
 import (
+	"errors"
 	"fmt"
+
+	"github.com/lucasb-eyer/go-colorful"
+
 	"ledctl3/internal/client/config"
 	"ledctl3/internal/client/controller"
-	"ledctl3/internal/client/controller/ambilight"
-	"ledctl3/internal/client/controller/ambilight/capturer/bitblt"
-	"ledctl3/internal/client/controller/ambilight/capturer/dxgi"
-	"ledctl3/internal/client/controller/ambilight/capturer/scrap"
-	"net"
+	"ledctl3/internal/client/controller/video"
+	"ledctl3/internal/client/controller/video/capturer/bitblt"
+	"ledctl3/internal/client/controller/video/capturer/dxgi"
 )
 
 type CapturerType string
@@ -16,13 +18,11 @@ type CapturerType string
 const (
 	DXGI   CapturerType = "dxgi"
 	BitBlt CapturerType = "bitblt"
-	Scrap  CapturerType = "scrap"
 )
 
 var capturerTypes = map[string]CapturerType{
 	"dxgi":   DXGI,
 	"bitblt": BitBlt,
-	"scrap":  Scrap,
 }
 
 type StripType string
@@ -63,17 +63,27 @@ func (a *App) validateConfig(c config.Config) error {
 		return fmt.Errorf("invalid default mode")
 	}
 
-	_, ok = capturerTypes[c.CapturerType]
+	_, ok = capturerTypes[c.CaptureType]
 	if !ok {
 		return fmt.Errorf("invalid capturer type")
 	}
 
-	err := a.validateServer(c.Server)
+	err := a.validateSegments(c.Segments)
 	if err != nil {
 		return err
 	}
 
-	err = a.validateDisplays(c.Displays)
+	err = a.validateServer(c.Server)
+	if err != nil {
+		return err
+	}
+
+	err = a.validateDisplayConfigs(c.Displays)
+	if err != nil {
+		return err
+	}
+
+	err = a.validateAudioConfig(c.Audio)
 	if err != nil {
 		return err
 	}
@@ -81,17 +91,27 @@ func (a *App) validateConfig(c config.Config) error {
 	return nil
 }
 
-func (a *App) validateServer(srv config.Server) error {
-	ip := net.ParseIP(srv.Host)
-	if ip == nil {
-		return fmt.Errorf("invalid server IP")
+func (a *App) validateSegments(segs []config.Segment) error {
+	for _, seg := range segs {
+		if seg.Leds < 1 || seg.Leds > 1024 {
+			return fmt.Errorf("invalid LED count for segment %d", seg.Id)
+		}
 	}
+
+	return nil
+}
+
+func (a *App) validateServer(srv config.Server) error {
+	//ip := net.ParseIP(srv.Host)
+	//if ip == nil {
+	//	return fmt.Errorf("invalid server IP")
+	//}
 
 	if srv.Port < 1 || srv.Port > 65535 {
 		return fmt.Errorf("invalid server port")
 	}
 
-	if srv.Leds < 1 || srv.Leds > 1024 {
+	if srv.Leds < 1 || srv.Leds > 2048 {
 		return fmt.Errorf("invalid server LED count")
 	}
 
@@ -111,48 +131,63 @@ func (a *App) validateServer(srv config.Server) error {
 	return nil
 }
 
-func (a *App) validateDisplays(displays []config.Display) error {
-	for i, d := range displays {
-		if d.Leds < 1 || d.Leds > 1024 {
-			return fmt.Errorf("invalid LED count for display %d", i)
-		}
+func (a *App) validateDisplayConfigs(displayConfigs [][]config.Display) error {
+	for _, cfg := range displayConfigs {
+		for i, d := range cfg {
+			if d.Width < 1 || d.Width > 7680 {
+				return fmt.Errorf("invalid width for display %d", i)
+			}
 
-		if d.Width < 1 || d.Width > 7680 {
-			return fmt.Errorf("invalid width for display %d", i)
-		}
+			if d.Height < 1 || d.Height > 4320 {
+				return fmt.Errorf("invalid width for display %d", i)
+			}
 
-		if d.Height < 1 || d.Height > 4320 {
-			return fmt.Errorf("invalid width for display %d", i)
-		}
+			if d.Framerate <= 0 {
+				return fmt.Errorf("invalid framerate for display %d", i)
+			}
 
-		v1 := validateBounds(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
-		if !v1 {
-			return fmt.Errorf("invalid bounds for display %d (from)", i)
-		}
+			v1 := validateBounds(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
+			if !v1 {
+				return fmt.Errorf("invalid bounds for display %d (from)", i)
+			}
 
-		v2 := validateBounds(d.Width, d.Height, d.Bounds.To.X, d.Bounds.To.Y)
-		if !v2 {
-			return fmt.Errorf("invalid bounds for display %d (to)", i)
+			v2 := validateBounds(d.Width, d.Height, d.Bounds.To.X, d.Bounds.To.Y)
+			if !v2 {
+				return fmt.Errorf("invalid bounds for display %d (to)", i)
+			}
 		}
+	}
+
+	return nil
+}
+func (a *App) validateAudioConfig(cfg config.AudioConfig) error {
+	if len(cfg.Colors) < 2 {
+		return errors.New("a minimum of two colors are required")
+	}
+
+	for _, hex := range cfg.Colors {
+		_, err := colorful.Hex(hex)
+		if err != nil {
+			return err
+		}
+	}
+
+	if cfg.WindowSize < 1 || cfg.WindowSize > 1000 {
+		return errors.New("averaging window must be at least 1 and no more than 1000 frames")
 	}
 
 	return nil
 }
 
 func (a *App) applyConfig(c config.Config) (err error) {
-	switch CapturerType(c.CapturerType) {
+	switch CapturerType(c.CaptureType) {
 	case DXGI:
-		a.displayRepository, err = dxgi.New()
+		a.Displays, err = dxgi.New()
 		if err != nil {
 			return err
 		}
 	case BitBlt:
-		a.displayRepository = bitblt.New()
-	case Scrap:
-		a.displayRepository, err = scrap.New()
-		if err != nil {
-			return err
-		}
+		a.Displays = bitblt.New()
 	}
 
 	a.DefaultMode = controller.Mode(c.DefaultMode)
@@ -163,24 +198,68 @@ func (a *App) applyConfig(c config.Config) (err error) {
 	a.GpioPin = c.Server.GpioPin
 	a.Brightness = c.Server.Brightness
 
-	for i, d := range c.Displays {
-		fromOffset := calculateOffset(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
-		toOffset := calculateOffset(d.Width, d.Height, d.Bounds.To.X, d.Bounds.To.Y)
-
-		size := getPixSliceSize(d.Width, d.Height, fromOffset, toOffset)
-
-		a.Displays = append(
-			a.Displays,
-			ambilight.DisplayConfig{
-				Id:           i,
-				Width:        d.Width,
-				Height:       d.Height,
-				Leds:         d.Leds,
-				BoundsOffset: fromOffset,
-				BoundsSize:   size,
+	a.Segments = []Segment{}
+	for _, s := range c.Segments {
+		a.Segments = append(
+			a.Segments, Segment{
+				Id:   s.Id,
+				Leds: s.Leds,
 			},
 		)
 	}
 
+	for i, cfg := range c.Displays {
+		parsedCfg := []video.DisplayConfig{}
+
+		for j, d := range cfg {
+			fromOffset := calculateOffset(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
+			toOffset := calculateOffset(d.Width, d.Height, d.Bounds.To.X, d.Bounds.To.Y)
+
+			size := getPixSliceSize(d.Width, d.Height, fromOffset, toOffset)
+
+			leds := 0
+			for _, seg := range a.Segments {
+				if seg.Id == d.Segment {
+					leds = seg.Leds
+				}
+			}
+
+			if leds == 0 {
+				return fmt.Errorf("segment not found for display %d of config %d", j, i)
+			}
+
+			parsedCfg = append(
+				parsedCfg, video.DisplayConfig{
+					Id:           j,
+					SegmentId:    d.Segment,
+					Leds:         leds,
+					Width:        d.Width,
+					Height:       d.Height,
+					Left:         d.Left,
+					Top:          d.Top,
+					Framerate:    d.Framerate,
+					BoundsOffset: fromOffset,
+					BoundsSize:   size,
+					Bounds:       d.Bounds,
+				},
+			)
+		}
+
+		a.DisplayConfigs = append(a.DisplayConfigs, parsedCfg)
+	}
+
+	a.Colors = []colorful.Color{}
+	for _, hex := range c.Audio.Colors {
+		clr, err := colorful.Hex(hex)
+		if err != nil {
+			return err
+		}
+
+		a.Colors = append(a.Colors, clr)
+	}
+
+	a.WindowSize = c.Audio.WindowSize
+
+	fmt.Println(a.Colors, a.WindowSize)
 	return nil
 }

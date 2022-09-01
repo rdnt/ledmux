@@ -16,29 +16,39 @@ type Event struct {
 
 type AmbilightEvent struct {
 	Event
-	GroupId int    `msgpack:"groupId"`
-	Data    []byte `msgpack:"data"`
+
+	Segments []Segment `msgpack:"segments"`
 }
 
-func NewAmbilightEvent(gid int, b []byte) AmbilightEvent {
+type Segment struct {
+	Id  int    `msgpack:"id"`
+	Pix []byte `msgpack:"pix"`
+}
+
+func NewAmbilightEvent(segs []Segment) AmbilightEvent {
 	return AmbilightEvent{
 		Event: Event{
 			Type: Ambilight,
 		},
-		GroupId: gid,
-		Data:    b,
+		Segments: segs,
 	}
 }
 
 type ReloadEvent struct {
 	Event
-	Leds       int    `msgpack:"leds"`
-	StripType  string `msgpack:"stripType"`
-	GpioPin    int    `msgpack:"gpioPin"`
-	Brightness int    `msgpack:"brightness"`
+	Leds       int             `msgpack:"leds"`
+	StripType  string          `msgpack:"stripType"`
+	GpioPin    int             `msgpack:"gpioPin"`
+	Brightness int             `msgpack:"brightness"`
+	Segments   []SegmentConfig `msgpack:"segments"`
 }
 
-func NewReloadEvent(leds int, stripType string, gpioPin, brightness int) ReloadEvent {
+type SegmentConfig struct {
+	Id   int `msgpack:"id"`
+	Leds int `msgpack:"leds"`
+}
+
+func NewReloadEvent(leds int, stripType string, gpioPin, brightness int, segments []SegmentConfig) ReloadEvent {
 	return ReloadEvent{
 		Event: Event{
 			Type: Reload,
@@ -47,5 +57,46 @@ func NewReloadEvent(leds int, stripType string, gpioPin, brightness int) ReloadE
 		StripType:  stripType,
 		GpioPin:    gpioPin,
 		Brightness: brightness,
+		Segments:   segments,
+	}
+}
+
+type RainbowEvent struct {
+	Event
+}
+
+func NewRainbowEvent() RainbowEvent {
+	return RainbowEvent{
+		Event: Event{
+			Type: Rainbow,
+		},
+	}
+}
+
+type StaticEvent struct {
+	Event
+	Color [4]byte `msgpack:"color"`
+}
+
+func NewStaticEvent(color [4]byte) StaticEvent {
+	return StaticEvent{
+		Event: Event{
+			Type: Static,
+		},
+		Color: color,
+	}
+}
+
+type UpdateEvent struct {
+	Event
+	Payload []byte `msgpack:"payload"`
+}
+
+func NewUpdateEvent(payload []byte) UpdateEvent {
+	return UpdateEvent{
+		Event: Event{
+			Type: Update,
+		},
+		Payload: payload,
 	}
 }
