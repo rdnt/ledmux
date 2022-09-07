@@ -336,14 +336,12 @@ func (v *Visualizer) process(samples []float64) {
 	freqs = freqs[:len(freqs)/2]
 
 	// Scale the frequencies so that low ones are more pronounced.
-	if len(freqs) > v.maxLedCount {
-		f := piecewiselinear.Function{Y: freqs}
-		f.X = SpanLog(0, 1, len(f.Y))
+	f := piecewiselinear.Function{Y: freqs}
+	f.X = SpanLog(0, 1, len(f.Y))
 
-		freqs = make([]float64, v.maxLedCount)
-		for i := 0; i < v.maxLedCount; i++ {
-			freqs[i] = f.At(float64(i) / float64(v.maxLedCount-1))
-		}
+	freqs = make([]float64, v.maxLedCount)
+	for i := 0; i < v.maxLedCount; i++ {
+		freqs[i] = f.At(float64(i) / float64(v.maxLedCount-1))
 	}
 
 	pix := []byte{}
