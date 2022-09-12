@@ -10,7 +10,6 @@ import (
 	"unsafe"
 
 	"github.com/go-ole/go-ole"
-	"github.com/gookit/color"
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/moutend/go-wca/pkg/wca"
 	"github.com/pkg/errors"
@@ -268,14 +267,14 @@ func watchEvent(ctx context.Context, event uintptr) (err error) {
 }
 
 func eventEmitter(event uintptr) (err error) {
-	//if err = ole.CoInitializeEx(0, ole.COINIT_MULTITHREADED); err != nil {
+	// if err = ole.CoInitializeEx(0, ole.COINIT_MULTITHREADED); err != nil {
 	//	return
-	//}
+	// }
 	dw := wca.WaitForSingleObject(event, wca.INFINITE)
 	if dw != 0 {
 		return fmt.Errorf("failed to watch event")
 	}
-	//ole.CoUninitialize()
+	// ole.CoUninitialize()
 	return
 }
 
@@ -422,14 +421,14 @@ func (v *Visualizer) process(samples []float64) {
 
 		pix := pix4[:seg.Leds*4]
 
-		if seg.Id == 0 {
-			out := "\r"
-			//out := "\n"
-			for i := 0; i < len(pix); i += 4 {
-				out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
-			}
-			fmt.Print(out)
-		}
+		// if seg.Id == 0 {
+		// 	out := "\r"
+		// 	//out := "\n"
+		// 	for i := 0; i < len(pix); i += 4 {
+		// 		out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
+		// 	}
+		// 	fmt.Print(out)
+		// }
 
 		segs = append(segs, visualizer.Segment{
 			Id:  seg.Id,

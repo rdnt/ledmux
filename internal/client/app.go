@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -145,19 +146,26 @@ func (a *App) Start() error {
 			a.connMux.Unlock()
 
 			if conn == nil {
-				conn, _, err = websocket.DefaultDialer.Dial(a.ServerAddress, nil)
-				if err != nil {
-					continue
-				}
+				func() {
+					ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+					defer cancel()
 
-				a.connMux.Lock()
-				a.conn = conn
-				a.connMux.Unlock()
+					conn, _, err = websocket.DefaultDialer.DialContext(ctx, a.ServerAddress, nil)
+					if err != nil {
+						fmt.Println(err)
+						return
+					}
 
-				err = a.reload()
-				if err != nil {
-					continue
-				}
+					a.connMux.Lock()
+					a.conn = conn
+					a.connMux.Unlock()
+
+					err = a.reload()
+					if err != nil {
+						fmt.Println(err)
+						return
+					}
+				}()
 
 			}
 		}
