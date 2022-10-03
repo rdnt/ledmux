@@ -121,13 +121,10 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 
 	wfx.NChannels = 2 // force channels to two
 	wfx.WFormatTag = 1
+	wfx.WBitsPerSample = 16
 	wfx.NBlockAlign = (wfx.WBitsPerSample / 8) * wfx.NChannels
 	wfx.NAvgBytesPerSec = wfx.NSamplesPerSec * uint32(wfx.NBlockAlign)
 	wfx.CbSize = 0
-
-	fmt.Printf("Format: PCM %d bit signed integer\n", wfx.WBitsPerSample)
-	fmt.Printf("Rate: %d Hz\n", wfx.NSamplesPerSec)
-	fmt.Printf("Channels: %d\n", wfx.NChannels)
 
 	var defaultPeriod wca.REFERENCE_TIME
 	var minimumPeriod wca.REFERENCE_TIME
@@ -137,16 +134,11 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	}
 	latency = time.Duration(int(minimumPeriod) * 100)
 
-	fmt.Println("Default period: ", defaultPeriod)
-	fmt.Println("Minimum period: ", minimumPeriod)
-	fmt.Println("Latency: ", latency)
-
 	if err := ac.Initialize(
 		wca.AUDCLNT_SHAREMODE_SHARED,
 		wca.AUDCLNT_STREAMFLAGS_EVENTCALLBACK|wca.AUDCLNT_STREAMFLAGS_LOOPBACK,
 		defaultPeriod, 0, wfx, nil,
 	); err != nil {
-		panic(err)
 		return err
 	}
 
@@ -161,13 +153,22 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	if err := ac.GetBufferSize(&bufferFrameSize); err != nil {
 		return err
 	}
-	fmt.Printf("Allocated buffer size: %d\n", bufferFrameSize)
 
 	var acc *wca.IAudioCaptureClient
 	if err := ac.GetService(wca.IID_IAudioCaptureClient, &acc); err != nil {
 		return err
 	}
 	defer acc.Release()
+
+	fmt.Printf("Format: PCM %d bit signed integer\n", wfx.WBitsPerSample)
+	fmt.Printf("Rate: %d Hz\n", wfx.NSamplesPerSec)
+	fmt.Printf("Channels: %d\n", wfx.NChannels)
+
+	fmt.Println("Default period: ", defaultPeriod)
+	fmt.Println("Minimum period: ", minimumPeriod)
+	fmt.Println("Latency: ", latency)
+
+	fmt.Printf("Allocated buffer size: %d\n", bufferFrameSize)
 
 	if err := ac.Start(); err != nil {
 		return err
@@ -314,6 +315,20 @@ func (v *Visualizer) process(samples []float64) {
 		v.mux.Unlock()
 	}()
 
+	e := 0.0
+	for _, s := range samples {
+		e += math.Pow(math.Abs(s), 2)
+	}
+	e /= math.MaxUint64
+
+	e = math.Max(e, 0)
+	e = math.Min(e, 1)
+
+	//e = math.Sqrt(1 - math.Pow(e-1, 2))
+	//e = math.Sqrt(1 - math.Pow(e-1, 2))
+	//
+	//e = math.Max(e, 0.5)
+
 	fft := fourier.NewFFT(len(samples))
 	coeff := fft.Coefficients(nil, window.Hamming(samples))
 
@@ -351,10 +366,36 @@ func (v *Visualizer) process(samples []float64) {
 		freq := freqs[i]
 
 		c := v.gradient.GetInterpolatedColor(freq)
+		//c := v.gradient.GetInterpolatedColor(float64(i) / float64(maxLeds-1))
 
 		hue, sat, val := c.Hsl()
 
 		val = math.Sqrt(1 - math.Pow(freq-1, 2))
+
+		// TODO
+		//hue = hue*0.9 + math.Min(e, 1)*0.1*hue
+
+		//mult := float64(maxLeds-i) / float64(maxLeds)
+
+		//mult *= math.Min(e, 1)
+		//val2 := val*(1-mult) + val*math.Min(e, 1)
+
+		//val = val*0.66 + val*0.33*math.Min(e, 1)
+		val = val + val*val*e*e
+
+		//sat2 := sat*(1-mult) + mult*math.Min(e, 1)
+		//sat2 = math.Min(sat2, 1)
+		//sat = (1-sat2)*sat*0.5 + sat*0.5
+
+		//val = val*0.5 + math.Min(e, 1)*0.5*val
+		//sat = sat*0.5 + math.Min(e, 1)*0.5*sat
+
+		//val = val*0.5 + math.Min(e, 1)*val*0.5
+
+		//hue = math.Min(e, 1) * hue
+		////val = math.Min(e, 1) * val
+		//sat = math.Min(e, 1) * sat
+
 		val = math.Min(val, 1)
 		val = math.Max(val, 0.25)
 
