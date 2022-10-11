@@ -5,13 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	gocolor "image/color"
+	"image/png"
+	"log"
+	"os"
 	"sync"
 	"time"
 
-	"github.com/bamiaux/rez"
-
 	"ledctl3/internal/client/config"
 	"ledctl3/internal/client/visualizer"
+	"ledctl3/pkg/gradient"
+
+	"github.com/bamiaux/rez"
+	"github.com/lucasb-eyer/go-colorful"
 )
 
 var (
@@ -31,17 +37,19 @@ type Visualizer struct {
 }
 
 type DisplayConfig struct {
-	Id           int
-	SegmentId    int
-	Leds         int
-	Width        int
-	Height       int
-	Left         int
-	Top          int
-	Framerate    int
-	BoundsOffset int
-	BoundsSize   int
-	Bounds       config.Bounds
+	Id             int
+	SegmentId      int
+	Leds           int
+	Width          int
+	Height         int
+	HorizontalLeds int
+	VerticalLeds   int
+	Left           int
+	Top            int
+	Framerate      int
+	BoundsOffset   int
+	BoundsSize     int
+	Bounds         config.Bounds
 }
 
 type Bounds struct {
@@ -75,6 +83,8 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 		return err
 	}
 
+	fmt.Println("DISPLAYS", v.displays)
+
 	displayConfigs, err := v.matchDisplays(v.displays)
 	if err != nil {
 		return err
@@ -86,11 +96,11 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	for _, d := range v.displays {
 		cfg := displayConfigs[d.Id()]
 
-		fmt.Println("########################################")
-		fmt.Println(d.Id())
-		fmt.Println(d)
-		fmt.Println(cfg)
-		fmt.Println("########################################")
+		//fmt.Println("################ MATCH #################")
+		//fmt.Println(d.Id())
+		//fmt.Println(d)
+		//fmt.Println(cfg)
+		//fmt.Println("########################################")
 
 		go func(d Display) {
 			defer wg.Done()
@@ -158,6 +168,8 @@ func (v *Visualizer) stopCapture() {
 	v.displays = nil
 }
 
+var saved = false
+
 func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 	now := time.Now()
 	//fmt.Println("process:", d.Id())
@@ -171,13 +183,13 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 			Rect:   image.Rect(0, 0, d.Width(), d.Height()),
 		}
 
-		ratio := (d.Width() + d.Height()) / (cfg.Leds / 2)
-		ratio = 90
+		//ratio := (d.Width()*2 + d.Height()*2) / (cfg.Leds / 2)
+		//ratio = 90
 
 		//fmt.Println("ratio", ratio)
 		//fmt.Println(d.Width()/ratio, d.Height()/ratio)
 
-		dst := image.NewNRGBA(image.Rect(0, 0, d.Width()/ratio, d.Height()/ratio))
+		dst := image.NewNRGBA(image.Rect(0, 0, cfg.HorizontalLeds, cfg.VerticalLeds))
 
 		//fmt.Println()
 
@@ -200,10 +212,10 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 		Rect:   image.Rect(0, 0, d.Width(), d.Height()),
 	}
 
-	ratio := (d.Width() + d.Height()) / (cfg.Leds / 2)
-	ratio = 90
+	//ratio := (d.Width() + d.Height()) / (cfg.Leds / 2)
+	//ratio = 90
 
-	dst := image.NewNRGBA(image.Rect(0, 0, d.Width()/ratio, d.Height()/ratio))
+	dst := image.NewNRGBA(image.Rect(0, 0, cfg.HorizontalLeds, cfg.VerticalLeds))
 
 	err := v.displayResizers[d.Id()].Convert(dst, src)
 	if err != nil {
@@ -211,26 +223,112 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 	}
 
 	pix = dst.Pix
-	//width, height := d.Width(), d.Height()
-	width, height := d.Width()/ratio, d.Height()/ratio
+
+	//width, height := d.Width()/ratio, d.Height()/ratio
 
 	//total := (d.Width()/ratio + d.Height()/ratio) * 2
 
+	width, height := cfg.HorizontalLeds, cfg.VerticalLeds
 	if d.Orientation() == Portrait || d.Orientation() == PortraitFlipped {
 		width, height = height, width
 	}
 
-	pix = getEdges(pix, width, height)
-	//pix = rotatePix(pix, d.Orientation())
+	func() {
+		if saved {
+			return
+		}
 
-	fromOffset := calculateOffset(width, height, 8, 21)
-	toOffset := calculateOffset(width, height, 31, 21)
+		saved = true
+
+		img := &image.NRGBA{
+			Pix:    pix,
+			Stride: width * 4,
+			Rect:   image.Rect(0, 0, width, height),
+		}
+
+		f, err := os.Create("frame.png")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err := png.Encode(f, img); err != nil {
+			f.Close()
+			log.Fatal(err)
+		}
+
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	//out := ""
+	//for i := 0; i < len(pix); i += 4 {
+	//	if i%33*4 == 0 {
+	//		fmt.Println(out)
+	//		out = ""
+	//	}
+	//	out += color.RGB(pix[i], pix[i]+1, pix[i]+2, true).Sprintf(" ")
+	//}
+	//fmt.Println(out)
+
+	pix = getEdges(pix, width, height)
+
+	//out := ""
+	//for i := 0; i < len(pix); i += 4 {
+	//	out += color.RGB(pix[i], pix[i]+1, pix[i]+2, true).Sprintf(" ")
+	//}
+	//fmt.Println(out)
+
+	//pix = rotatePix(pix, d.Orientation())
+	//
+	//ratioX := int(float64(d.Width()) / float64(cfg.HorizontalLeds))
+	//ratioY := int(float64(d.Height()) / float64(cfg.VerticalLeds))
+	//
+	////fmt.Println("RATIO", ratioX, ratioY)
+	//
+	fromOffset := calculateOffset(width, height, 3, 17)
+	toOffset := calculateOffset(width, height, 29, 17)
 
 	size := getPixSliceSize(width, height, fromOffset, toOffset)
-
+	//
 	pix = getBounds(pix, fromOffset*4, size*4)
-	pix = averagePix(pix, cfg.Leds)
-	pix = adjustWhitePoint(pix, 0, 256)
+
+	pix = adjustWhitePoint(pix, 100, 255)
+
+	//pix = adjustWhitePoint(pix, 0, 256)
+
+	//fmt.Println("width", width, "height", height, "from", fromOffset, "size", size)
+
+	colors := []colorful.Color{}
+
+	for i := 0; i < len(pix); i += 4 {
+		clr, _ := colorful.MakeColor(gocolor.NRGBA{
+			R: pix[i],
+			G: pix[i+1],
+			B: pix[i+2],
+			A: pix[i+3],
+		})
+
+		colors = append(colors, clr)
+	}
+
+	grad, err := gradient.New(colors...)
+	if err != nil {
+		panic(err)
+	}
+
+	pix = []byte{}
+	//out := ""
+	for i := 0.0; i < float64(cfg.Leds); i++ {
+		clr := grad.GetInterpolatedColor((i + 1) / float64(cfg.Leds))
+		r, g, b := clr.RGB255()
+		//out += color.RGB(r, g, b, true).Sprintf(" ")
+		pix = append(pix, []byte{r, g, b, 0xff}...)
+	}
+	//fmt.Println(out)
+
+	//fmt.Println("LENPIX", len(pix), d)
+	//pix = averagePix(pix, cfg.Leds)
 
 	v.events <- visualizer.UpdateEvent{
 		Segments: []visualizer.Segment{
@@ -244,7 +342,7 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 }
 
 func getPixSliceSize(width, height, from, to int) int {
-	return (width*2 + height*2) - from + to
+	return (width*2 + height*2) - from + to - 1
 }
 
 func calculateOffset(width, height, x, y int) int {
@@ -380,9 +478,12 @@ func getEdges(pix []byte, width int, height int) []byte {
 
 	go func() {
 		defer wg.Done()
+
 		offset := (width + height) * 4
+
 		for x := 0; x < width*4; x += 4 {
-			i := (width * (height - 1) * 4) - x
+			i := (width*(height)-1)*4 - x
+
 			b[offset+x] = pix[i]
 			b[offset+x+1] = pix[i+1]
 			b[offset+x+2] = pix[i+2]

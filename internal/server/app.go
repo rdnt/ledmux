@@ -239,11 +239,14 @@ func (ctl *Controller) HandleAmbilightEvent(b []byte) {
 		if len(ctl.segments) <= seg.Id {
 			panic("segment doesn't exist")
 		}
-
 		segment := ctl.segments[seg.Id]
 
 		for i := 0; i < (segment.end-segment.start)*4; i += 4 {
 			// Parse color data for current LED
+			if i > len(seg.Pix)-1 {
+				fmt.Print("o")
+				break
+			}
 			r := seg.Pix[i]
 			g := seg.Pix[i+1]
 			b := seg.Pix[i+2]

@@ -35,13 +35,15 @@ type Server struct {
 }
 
 type Display struct {
-	Segment   int    `yaml:"segment" json:"segment"`
-	Width     int    `yaml:"width" json:"width"`
-	Height    int    `yaml:"height" json:"height"`
-	Left      int    `yaml:"left" json:"left"`
-	Top       int    `yaml:"top" json:"top"`
-	Bounds    Bounds `yaml:"bounds" json:"bounds"`
-	Framerate int    `yaml:"framerate" json:"framerate"`
+	Segment        int    `yaml:"segment" json:"segment"`
+	Width          int    `yaml:"width" json:"width"`
+	Height         int    `yaml:"height" json:"height"`
+	Left           int    `yaml:"left" json:"left"`
+	Top            int    `yaml:"top" json:"top"`
+	HorizontalLeds int    `yaml:"horizontalLeds" json:"horizontalLeds"`
+	VerticalLeds   int    `yaml:"verticalLeds" json:"verticalLeds"`
+	Bounds         Bounds `yaml:"bounds" json:"bounds"`
+	Framerate      int    `yaml:"framerate" json:"framerate"`
 }
 
 type Bounds struct {

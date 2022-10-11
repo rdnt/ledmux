@@ -7,8 +7,9 @@ import (
 	"image"
 	"time"
 
-	"github.com/kirides/screencapture/d3d"
 	"ledctl3/internal/client/controller/video"
+
+	"github.com/kirides/screencapture/d3d"
 )
 
 var ErrNoFrame = fmt.Errorf("no frame")

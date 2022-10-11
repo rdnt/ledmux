@@ -230,17 +230,19 @@ func (a *App) applyConfig(c config.Config) (err error) {
 
 			parsedCfg = append(
 				parsedCfg, video.DisplayConfig{
-					Id:           j,
-					SegmentId:    d.Segment,
-					Leds:         leds,
-					Width:        d.Width,
-					Height:       d.Height,
-					Left:         d.Left,
-					Top:          d.Top,
-					Framerate:    d.Framerate,
-					BoundsOffset: fromOffset,
-					BoundsSize:   size,
-					Bounds:       d.Bounds,
+					Id:             j,
+					SegmentId:      d.Segment,
+					Leds:           leds,
+					Width:          d.Width,
+					Height:         d.Height,
+					Left:           d.Left,
+					Top:            d.Top,
+					HorizontalLeds: d.HorizontalLeds,
+					VerticalLeds:   d.VerticalLeds,
+					Framerate:      d.Framerate,
+					BoundsOffset:   fromOffset,
+					BoundsSize:     size,
+					Bounds:         d.Bounds,
 				},
 			)
 		}
