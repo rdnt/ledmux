@@ -293,7 +293,8 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 	//
 	pix = getBounds(pix, fromOffset*4, size*4)
 
-	pix = adjustWhitePoint(pix, 100, 255)
+	// TODO: load from config
+	pix = adjustWhitePoint(pix, 50, 255)
 
 	//pix = adjustWhitePoint(pix, 0, 256)
 

@@ -156,6 +156,8 @@ func (a *App) Start() error {
 						return
 					}
 
+					fmt.Println("connected")
+
 					a.connMux.Lock()
 					a.conn = conn
 					a.connMux.Unlock()
