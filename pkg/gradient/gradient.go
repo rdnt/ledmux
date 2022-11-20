@@ -2,7 +2,9 @@ package gradient
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/gookit/color"
 	"github.com/lucasb-eyer/go-colorful"
 )
 
@@ -41,11 +43,19 @@ func New(colors ...colorful.Color) (Gradient, error) {
 	g := Gradient{}
 
 	for i, clr := range colors {
+		r, gg, b, _ := clr.RGBA()
+
+		r = r >> 8
+		gg = gg >> 8
+		b = b >> 8
+
+		color.RGB(uint8(r), uint8(gg), uint8(b), true).Print("    ")
 		g = append(g, Keypoint{
 			Color:    clr,
 			Position: float64(i) / float64(len(colors)-1),
 		})
 	}
+	fmt.Println(g)
 
 	return g, nil
 }

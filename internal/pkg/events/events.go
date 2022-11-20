@@ -11,18 +11,18 @@ const (
 )
 
 type Event struct {
-	Type Type `msgpack:"event"`
+	Type Type `json:"event"`
 }
 
 type AmbilightEvent struct {
 	Event
 
-	Segments []Segment `msgpack:"segments"`
+	Segments []Segment `json:"segments"`
 }
 
 type Segment struct {
-	Id  int    `msgpack:"id"`
-	Pix []byte `msgpack:"pix"`
+	Id  int    `json:"id"`
+	Pix []byte `json:"pix"`
 }
 
 func NewAmbilightEvent(segs []Segment) AmbilightEvent {
@@ -36,16 +36,16 @@ func NewAmbilightEvent(segs []Segment) AmbilightEvent {
 
 type ReloadEvent struct {
 	Event
-	Leds       int             `msgpack:"leds"`
-	StripType  string          `msgpack:"stripType"`
-	GpioPin    int             `msgpack:"gpioPin"`
-	Brightness int             `msgpack:"brightness"`
-	Segments   []SegmentConfig `msgpack:"segments"`
+	Leds       int             `json:"leds"`
+	StripType  string          `json:"stripType"`
+	GpioPin    int             `json:"gpioPin"`
+	Brightness int             `json:"brightness"`
+	Segments   []SegmentConfig `json:"segments"`
 }
 
 type SegmentConfig struct {
-	Id   int `msgpack:"id"`
-	Leds int `msgpack:"leds"`
+	Id   int `json:"id"`
+	Leds int `json:"leds"`
 }
 
 func NewReloadEvent(leds int, stripType string, gpioPin, brightness int, segments []SegmentConfig) ReloadEvent {
@@ -75,7 +75,7 @@ func NewRainbowEvent() RainbowEvent {
 
 type StaticEvent struct {
 	Event
-	Color [4]byte `msgpack:"color"`
+	Color [4]byte `json:"color"`
 }
 
 func NewStaticEvent(color [4]byte) StaticEvent {
@@ -89,7 +89,7 @@ func NewStaticEvent(color [4]byte) StaticEvent {
 
 type UpdateEvent struct {
 	Event
-	Payload []byte `msgpack:"payload"`
+	Payload []byte `json:"payload"`
 }
 
 func NewUpdateEvent(payload []byte) UpdateEvent {

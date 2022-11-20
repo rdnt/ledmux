@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/cmplx"
+	"math/rand"
 	"sync"
 	"time"
 	"unsafe"
@@ -297,6 +298,12 @@ func SpanLog(min, max float64, nPoints int) []float64 {
 	return X
 }
 
+func reverse[S ~[]E, E any](s S) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+}
+
 func (v *Visualizer) process(samples []float64) {
 	now := time.Now()
 
@@ -341,34 +348,54 @@ func (v *Visualizer) process(samples []float64) {
 		}
 	}
 
-	for i, f := range freqs {
-		norm := normalize(float64(int(f)), 0, maxfreq)
-		freqs[i] = norm
-	}
+	//fmt.Println(maxfreq / float64(math.MaxUint64))
 
 	// Only keep the first half of the fft
 	freqs = freqs[:len(freqs)/2]
+
+	for i, f := range freqs {
+		norm := normalize(f, 0, maxfreq)
+		freqs[i] = norm
+	}
 
 	// Scale the frequencies so that low ones are more pronounced.
 	f := piecewiselinear.Function{Y: freqs}
 	f.X = SpanLog(0, 1, len(f.Y))
 
-	freqs = make([]float64, v.maxLedCount)
-	for i := 0; i < v.maxLedCount; i++ {
-		freqs[i] = f.At(float64(i) / float64(v.maxLedCount-1))
+	maxLeds := v.maxLedCount
+
+	freqsmax := maxLeds / 2
+	//freqsmax := maxLeds
+
+	freqs = make([]float64, freqsmax)
+	for i := 0; i < freqsmax; i++ {
+		freqs[i] = f.At(float64(i) / float64(freqsmax-1))
 	}
+
+	p2 := make([]float64, maxLeds/2)
+	copy(p2, freqs)
+
+	reverse(freqs) // freqs or p2
+
+	freqs = append(p2, freqs...)
+
+	rand.Seed(time.Now().UnixMilli() / 500)
+	rand.Shuffle(len(freqs), func(i, j int) { freqs[i], freqs[j] = freqs[j], freqs[i] })
 
 	pix := []byte{}
 
-	maxLeds := v.maxLedCount
+	max := math.Max(math.Min((maxfreq)/float64(math.MaxUint32)/3, 1), 0.25)
 
+	//for i := maxLeds - 1; i >= 0; i-- {
 	for i := 0; i < maxLeds; i++ {
 		freq := freqs[i]
 
 		c := v.gradient.GetInterpolatedColor(freq)
 		//c := v.gradient.GetInterpolatedColor(float64(i) / float64(maxLeds-1))
 
-		hue, sat, val := c.Hsl()
+		hue, sat, val := c.Hsv()
+		initval := val
+		initval = initval
 
 		val = math.Sqrt(1 - math.Pow(freq-1, 2))
 
@@ -380,10 +407,11 @@ func (v *Visualizer) process(samples []float64) {
 		//mult *= math.Min(e, 1)
 		//val2 := val*(1-mult) + val*math.Min(e, 1)
 
-		//val = val*0.66 + val*0.33*math.Min(e, 1)
-		val = val + val*val*e*e
+		//val = val*0.66 + val*0.33*math.Min(max, 1)
+		//val = val + val*val*e*e
+		//val = val * max
 
-		//sat2 := sat*(1-mult) + mult*math.Min(e, 1)
+		//sat = sat*(1-freq) + freq*math.Min(max, 1)
 		//sat2 = math.Min(sat2, 1)
 		//sat = (1-sat2)*sat*0.5 + sat*0.5
 
@@ -396,12 +424,24 @@ func (v *Visualizer) process(samples []float64) {
 		////val = math.Min(e, 1) * val
 		//sat = math.Min(e, 1) * sat
 
+		val = val + val*(max)
 		val = math.Min(val, 1)
-		val = math.Max(val, 0.25)
+		val = math.Max(val, 0)
+		val = 0.75 + val*0.25
+		//val = math.Max(val, max)
+
+		// @@@@@@ reset
+		//val = initval
 
 		c = colorful.Hsv(hue, sat, val)
 
 		r, g, b, _ := c.RGBA()
+
+		// scale down specific leds cause why not
+		if i >= 300 || (i >= 0 && i < 4) || (i >= 240 && i < 244) {
+			g = uint32(float64(g) * 0.85)
+			b = uint32(float64(b) * 0.9)
+		}
 
 		r = r >> 8
 		g = g >> 8
@@ -420,7 +460,7 @@ func (v *Visualizer) process(samples []float64) {
 
 	for i := 0; i < len(pixs); i++ {
 		// for each history item
-		w := float64((i+1)*(i+1) + len(pixs))
+		w := float64((i+1)*(i+1) + len(pixs)*len(pixs))
 
 		weights = append(weights, w)
 		weightsTotal += w
@@ -450,9 +490,9 @@ func (v *Visualizer) process(samples []float64) {
 
 			// TODO: do the mirroring beforehand (not with the 2nd part of the fft...)
 			//  by limiting max to maxleds/2 and then flipping the first half into the second
-			if i >= length/2 {
-				offset = length - 4 - i
-			}
+			//if i >= length/2 {
+			//	offset = length - 4 - i
+			//}
 
 			pix4[i] = uint8(pix3[offset])
 			pix4[i+1] = uint8(pix3[offset+1])
@@ -462,14 +502,14 @@ func (v *Visualizer) process(samples []float64) {
 
 		pix := pix4[:seg.Leds*4]
 
-		// if seg.Id == 0 {
-		// 	out := "\r"
-		// 	//out := "\n"
-		// 	for i := 0; i < len(pix); i += 4 {
-		// 		out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
-		// 	}
-		// 	fmt.Print(out)
-		// }
+		//if seg.Id == 0 {
+		//	out := "\r"
+		//	//out := "\n"
+		//	for i := 0; i < len(pix); i += 4 {
+		//		out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
+		//	}
+		//	fmt.Print(out)
+		//}
 
 		segs = append(segs, visualizer.Segment{
 			Id:  seg.Id,

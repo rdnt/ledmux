@@ -2,18 +2,18 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
-
-	"github.com/gorilla/websocket"
-	"github.com/lucasb-eyer/go-colorful"
-	"github.com/vmihailenco/msgpack/v5"
 
 	"ledctl3/internal/client/controller"
 	"ledctl3/internal/client/controller/audio"
 	"ledctl3/internal/client/controller/video"
 	"ledctl3/internal/pkg/events"
+
+	"github.com/gorilla/websocket"
+	"github.com/lucasb-eyer/go-colorful"
 )
 
 type App struct {
@@ -193,7 +193,7 @@ func (a *App) reload() error {
 
 	e := events.NewReloadEvent(a.Leds, string(a.StripType), a.GpioPin, a.Brightness, segments)
 
-	b, err := msgpack.Marshal(e)
+	b, err := json.Marshal(e)
 	if err != nil {
 		return err
 	}

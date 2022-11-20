@@ -1,15 +1,15 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/VividCortex/ewma"
-	"github.com/vmihailenco/msgpack/v5"
-
 	"ledctl3/internal/client/visualizer"
 	"ledctl3/internal/pkg/events"
+
+	"github.com/VividCortex/ewma"
 )
 
 type Controller struct {
@@ -144,7 +144,7 @@ func (ctl *Controller) SetMode(mode Mode) error {
 
 				e := events.NewAmbilightEvent(segs)
 
-				b, err := msgpack.Marshal(e)
+				b, err := json.Marshal(e)
 				if err != nil {
 					panic(err)
 				}

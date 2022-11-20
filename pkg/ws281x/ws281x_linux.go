@@ -157,6 +157,7 @@ func (ws *Engine) Render() error {
 	leds := ws.leds
 	ws.mux.Unlock()
 
+	fmt.Println("RENDER", leds)
 	ws.engine.SetLedsSync(0, leds)
 	return ws.engine.Render()
 }

@@ -1,16 +1,16 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
 
-	"github.com/gookit/color"
-	"github.com/gorilla/websocket"
-	"github.com/vmihailenco/msgpack/v5"
-
 	"ledctl3/internal/pkg/events"
 	"ledctl3/pkg/ws281x"
+
+	"github.com/gookit/color"
+	"github.com/gorilla/websocket"
 )
 
 // TODO: merge with client mode
@@ -156,7 +156,7 @@ func (ctl *Controller) Start() error {
 		for b := range ctl.msgs {
 			var e events.Event
 
-			err := msgpack.Unmarshal(b, &e)
+			err := json.Unmarshal(b, &e)
 			if err != nil {
 				fmt.Println("m")
 				//fmt.Println(err)
@@ -206,7 +206,7 @@ func (ctl *Controller) reload(gpioPin, ledsCount, brightness int, stripType stri
 func (ctl *Controller) HandleReloadEvent(b []byte) {
 	var evt events.ReloadEvent
 
-	err := msgpack.Unmarshal(b, &evt)
+	err := json.Unmarshal(b, &evt)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -224,7 +224,7 @@ func (ctl *Controller) HandleAmbilightEvent(b []byte) {
 	}
 
 	var evt events.AmbilightEvent
-	err := msgpack.Unmarshal(b, &evt)
+	err := json.Unmarshal(b, &evt)
 	if err != nil {
 		panic(err)
 	}
