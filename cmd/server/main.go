@@ -2,12 +2,19 @@ package main
 
 import (
 	"fmt"
-	"ledctl3/internal/server"
 	"os"
 	"os/signal"
+
+	"ledctl3/internal/client/config"
+	"ledctl3/internal/server"
 )
 
 func main() {
+	cfg, err := config.Load()
+	if err != nil {
+		panic(err)
+	}
+
 	ctl, err := server.New()
 	if err != nil {
 		panic(err)

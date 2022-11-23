@@ -114,7 +114,7 @@ func New(opts ...Option) (*App, error) {
 				continue
 			}
 
-			err := conn.WriteMessage(websocket.BinaryMessage, b)
+			err := conn.WriteMessage(websocket.TextMessage, b)
 			if err != nil {
 				a.connMux.Lock()
 				a.conn = nil
@@ -203,7 +203,7 @@ func (a *App) reload() error {
 	a.connMux.Unlock()
 
 	if conn != nil {
-		err = a.conn.WriteMessage(websocket.BinaryMessage, b)
+		err = a.conn.WriteMessage(websocket.TextMessage, b)
 		if err != nil {
 			return err
 		}

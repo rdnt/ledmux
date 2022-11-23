@@ -9,7 +9,6 @@ import (
 	"ledctl3/internal/pkg/events"
 	"ledctl3/pkg/ws281x"
 
-	"github.com/gookit/color"
 	"github.com/gorilla/websocket"
 )
 
@@ -79,7 +78,7 @@ func New() (*Controller, error) {
 					return
 				}
 
-				if typ != websocket.BinaryMessage {
+				if typ != websocket.TextMessage {
 					fmt.Println("skip")
 					continue
 				}
@@ -234,7 +233,7 @@ func (ctl *Controller) HandleAmbilightEvent(b []byte) {
 		ctl.mode = Ambilight
 	}
 
-	out := "\n"
+	//out := "\n"
 	for _, seg := range evt.Segments {
 		if len(ctl.segments) <= seg.Id {
 			panic("segment doesn't exist")
@@ -254,11 +253,11 @@ func (ctl *Controller) HandleAmbilightEvent(b []byte) {
 				fmt.Println(err)
 			}
 
-			out += color.RGB(seg.Pix[i], seg.Pix[i+1], seg.Pix[i+2], true).Sprintf(" ")
+			//out += color.RGB(seg.Pix[i], seg.Pix[i+1], seg.Pix[i+2], true).Sprintf(" ")
 		}
 
 	}
-	fmt.Print(out)
+	//fmt.Print(out)
 
 	ctl.mux.Lock()
 	if ctl.rendering {
