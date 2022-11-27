@@ -1,24 +1,28 @@
 //go:build (!linux && !darwin) || !cgo
-// +build !linux,!darwin !cgo
 
 package ws281x
 
 import (
+	"fmt"
 	"image/color"
 	"sync"
+
+	"ledctl3/pkg/gradient"
+
+	gcolor "github.com/gookit/color"
 )
 
 // Engine struct placeholder
 type Engine struct {
-	leds      int
 	wg        *sync.WaitGroup
 	stop      chan struct{}
 	rendering bool
-	arr       []color.Color
+	ledsCount int
+	leds      []color.Color
 }
 
 // Init placeholder function -- initializes all waitgroup logic on windows
-func Init(_ int, leds int, _ int, _ string) (*Engine, error) {
+func Init(_ int, ledsCount int, _ int, _ string) (*Engine, error) {
 	// Create the effects waitgroup
 	wg := sync.WaitGroup{}
 	// Add main routine's delta to the waitgroup
@@ -27,31 +31,32 @@ func Init(_ int, leds int, _ int, _ string) (*Engine, error) {
 	stop := make(chan struct{})
 	// Return a reference to the engine instance
 	return &Engine{
-		wg:   &wg,
-		stop: stop,
-		leds: leds,
+		wg:        &wg,
+		stop:      stop,
+		ledsCount: ledsCount,
+		leds:      make([]color.Color, ledsCount),
 	}, nil
 }
 
 // Cancel returns the stop channel
-func (ws *Engine) Cancel() chan struct{} {
-	return ws.stop
+func (e *Engine) Cancel() chan struct{} {
+	return e.stop
 }
 
 // Stop stops all running effects and prepares for new commands
-func (ws *Engine) Stop() {
+func (e *Engine) Stop() {
 	// Notify all running goroutines that they should cancel
-	close(ws.stop)
+	close(e.stop)
 	// Decrement main routine's delta
-	ws.wg.Done()
+	e.wg.Done()
 	// Wait for goroutines to finish their work
-	ws.wg.Wait()
+	e.wg.Wait()
 	// Turn off all leds
-	ws.Clear()
+	e.Clear()
 	// Add main routine's delta to waitgroup again
-	ws.wg.Add(1)
+	e.wg.Add(1)
 	// Re-initialize stop channel
-	ws.stop = make(chan struct{})
+	e.stop = make(chan struct{})
 }
 
 // Fini placeholder
@@ -63,13 +68,35 @@ func (*Engine) Clear() error {
 }
 
 // Render placeholder
-func (*Engine) Render() error {
+func (e *Engine) Render() error {
 	//fmt.Println()
+	g, err := gradient.New(e.leds...)
+	if err != nil {
+		return err
+	}
+
+	out := "\r"
+	for i := 0.0; i <= 1.0; i += 0.01 {
+		c := g.GetInterpolatedColor(i)
+		r, g, b, _ := c.RGBA()
+		out += gcolor.RGB(uint8(r>>8), uint8(g>>8), uint8(b>>8), true).Sprint(" ")
+	}
+
+	fmt.Print(out)
+
+	//time.Sleep(10 * time.Millisecond)
+
 	return nil
 }
 
 // SetLedColor placeholder
-func (*Engine) SetLedColor(id int, r uint8, g uint8, b uint8) error {
+func (e *Engine) SetLedColor(id int, r uint8, g uint8, b uint8) error {
 	//color.RGB(r, g, b, true).Print(" ")
+	e.leds[id] = color.NRGBA{
+		R: r,
+		G: g,
+		B: b,
+		A: 255,
+	}
 	return nil
 }

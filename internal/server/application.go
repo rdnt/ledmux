@@ -11,6 +11,7 @@ import (
 	"ledctl3/pkg/ws281x"
 
 	"github.com/gorilla/websocket"
+	"golang.org/x/exp/slices"
 )
 
 type Mode string
@@ -244,29 +245,25 @@ func (a *Application) HandleSetLedsEvent(b []byte) {
 
 	//out := "\n"
 	for _, seg := range evt.Segments {
-		exists := false
-		for _, seg2 := range a.segments {
-			if seg2.id == seg.Id {
-				exists = true
-			}
-		}
+		idx := slices.IndexFunc(a.segments, func(s Segment) bool {
+			return s.id == seg.Id
+		})
 
-		if !exists {
+		if idx == -1 {
 			fmt.Println("Segment doesn't exist:", seg.Id)
 			return
 		}
 
-		segment := a.segments[seg.Id]
+		segment := a.segments[idx]
 
-		for i := 0; i < (segment.Leds)*4; i += 4 {
+		for i := 0; i < (segment.end-segment.start)*4; i += 4 {
 			// Parse color data for current LED
 			r := seg.Pix[i]
 			g := seg.Pix[i+1]
 			b := seg.Pix[i+2]
 			// Set the current LED's color
 			// Not need to check for error
-			err := a.ws
-			.3(i/4+segment.start, r, g, b)
+			err := a.ws.SetLedColor(i/4+segment.start, r, g, b)
 			if err != nil {
 				fmt.Println(err)
 			}

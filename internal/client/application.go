@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"image/color"
 	"sync"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	"ledctl3/internal/client/controller/video"
 
 	"github.com/gorilla/websocket"
-	"github.com/lucasb-eyer/go-colorful"
 )
 
 type Application struct {
@@ -32,7 +32,7 @@ type Application struct {
 	Displays       video.DisplayRepository
 	DisplayConfigs [][]video.DisplayConfig
 
-	Colors     []colorful.Color
+	Colors     []color.Color
 	WindowSize int
 
 	//cfg config.Config

@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"image/color"
 
 	"github.com/lucasb-eyer/go-colorful"
 
@@ -248,7 +249,7 @@ func (a *Application) applyConfig(c config.Config) (err error) {
 		a.DisplayConfigs = append(a.DisplayConfigs, parsedCfg)
 	}
 
-	a.Colors = []colorful.Color{}
+	a.Colors = []color.Color{}
 	for _, hex := range c.Audio.Colors {
 		clr, err := colorful.Hex(hex)
 		if err != nil {

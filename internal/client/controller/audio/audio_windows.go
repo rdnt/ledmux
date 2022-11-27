@@ -3,14 +3,15 @@ package audio
 import (
 	"context"
 	"fmt"
+	"image/color"
 	"math"
 	"math/cmplx"
-	"math/rand"
 	"sync"
 	"time"
 	"unsafe"
 
 	"github.com/go-ole/go-ole"
+	gcolor "github.com/gookit/color"
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/moutend/go-wca/pkg/wca"
 	"github.com/pkg/errors"
@@ -26,7 +27,7 @@ type Visualizer struct {
 	mux sync.Mutex
 
 	leds     int
-	colors   []colorful.Color
+	colors   []color.Color
 	segments []Segment
 
 	events      chan visualizer.UpdateEvent
@@ -379,8 +380,8 @@ func (v *Visualizer) process(samples []float64) {
 
 	freqs = append(p2, freqs...)
 
-	rand.Seed(time.Now().UnixMilli() / 500)
-	rand.Shuffle(len(freqs), func(i, j int) { freqs[i], freqs[j] = freqs[j], freqs[i] })
+	//rand.Seed(time.Now().UnixMilli() / 500)
+	//rand.Shuffle(len(freqs), func(i, j int) { freqs[i], freqs[j] = freqs[j], freqs[i] })
 
 	pix := []byte{}
 
@@ -391,9 +392,10 @@ func (v *Visualizer) process(samples []float64) {
 		freq := freqs[i]
 
 		c := v.gradient.GetInterpolatedColor(freq)
+		clr, _ := colorful.MakeColor(c)
 		//c := v.gradient.GetInterpolatedColor(float64(i) / float64(maxLeds-1))
 
-		hue, sat, val := c.Hsv()
+		hue, sat, val := clr.Hsv()
 		initval := val
 		initval = initval
 
@@ -438,10 +440,10 @@ func (v *Visualizer) process(samples []float64) {
 		r, g, b, _ := c.RGBA()
 
 		// scale down specific leds cause why not
-		if i >= 300 || (i >= 0 && i < 4) || (i >= 240 && i < 244) {
-			g = uint32(float64(g) * 0.85)
-			b = uint32(float64(b) * 0.9)
-		}
+		//if i >= 300 || (i >= 0 && i < 4) || (i >= 240 && i < 244) {
+		//	g = uint32(float64(g) * 0.85)
+		//	b = uint32(float64(b) * 0.9)
+		//}
 
 		r = r >> 8
 		g = g >> 8
@@ -502,14 +504,14 @@ func (v *Visualizer) process(samples []float64) {
 
 		pix := pix4[:seg.Leds*4]
 
-		//if seg.Id == 0 {
-		//	out := "\r"
-		//	//out := "\n"
-		//	for i := 0; i < len(pix); i += 4 {
-		//		out += color.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
-		//	}
-		//	fmt.Print(out)
-		//}
+		if seg.Id == 0 {
+			out := "\r"
+			//out := "\n"
+			for i := 0; i < len(pix); i += 4 {
+				out += gcolor.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
+			}
+			fmt.Print(out)
+		}
 
 		segs = append(segs, visualizer.Segment{
 			Id:  seg.Id,
