@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"ledctl3/internal/client/visualizer"
-	"ledctl3/internal/pkg/events"
+	"ledctl3/internal/pkg/event"
 
 	"github.com/VividCortex/ewma"
 )
@@ -133,16 +133,16 @@ func (ctl *Controller) SetMode(mode Mode) error {
 				ctl.timing.process.Add(float64(evt.Duration.Nanoseconds()))
 				ctl.timingMux.Unlock()
 
-				segs := []events.Segment{}
+				segs := []event.Segment{}
 
 				for _, seg := range evt.Segments {
-					segs = append(segs, events.Segment{
+					segs = append(segs, event.Segment{
 						Id:  seg.Id,
 						Pix: seg.Pix,
 					})
 				}
 
-				e := events.NewAmbilightEvent(segs)
+				e := event.NewSetLedsEvent(segs)
 
 				b, err := json.Marshal(e)
 				if err != nil {

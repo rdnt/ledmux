@@ -6,48 +6,54 @@ import (
 	"net/http"
 	"sync"
 
-	"ledctl3/internal/pkg/events"
+	"ledctl3/internal/pkg/event"
+	"ledctl3/internal/server/config"
 	"ledctl3/pkg/ws281x"
 
 	"github.com/gorilla/websocket"
 )
 
-// TODO: merge with client mode
-
 type Mode string
 
 const (
-	Ambilight Mode = "video"
-	AudioViz  Mode = "audio"
-	Rainbow   Mode = "rainbow"
-	Static    Mode = "static"
-	Reload    Mode = "reload"
+	Idle   Mode = "idle"
+	Render Mode = "render"
 )
 
-var modes = map[string]Mode{
-	"video":   Ambilight,
-	"audio":   AudioViz,
-	"rainbow": Rainbow,
-	"static":  Static,
-	"reload":  Reload,
-}
+//
+//const (
+//	Ambilight Mode = "video"
+//	AudioViz  Mode = "audio"
+//	Rainbow   Mode = "rainbow"
+//	Static    Mode = "static"
+//	Reload    Mode = "reload"
+//)
+//
+//var modes = map[string]Mode{
+//	"video":   Ambilight,
+//	"audio":   AudioViz,
+//	"rainbow": Rainbow,
+//	"static":  Static,
+//	"reload":  Reload,
+//}
 
 type Controller struct {
-	mux       sync.Mutex
-	msgs      chan []byte
-	ws        *ws281x.Engine
-	leds      int
-	segments  []Segment
+	config config.Config
+	mux    sync.Mutex
+	events chan []byte
+	ws     *ws281x.Engine
+	leds   int
+	//segments  []Segment
 	mode      Mode
 	rendering bool
 	buffer    []byte
 }
 
-type Segment struct {
-	id    int
-	start int
-	end   int
-}
+//type Segment struct {
+//	id    int
+//	start int
+//	end   int
+//}
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  65535, //1024
@@ -58,41 +64,12 @@ var upgrader = websocket.Upgrader{
 	EnableCompression: true,
 }
 
-func New() (*Controller, error) {
-	msgs := make(chan []byte, 1)
-
-	http.HandleFunc(
-		"/ws", func(w http.ResponseWriter, req *http.Request) {
-			wsconn, err := upgrader.Upgrade(w, req, nil)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-
-			wsconn.EnableWriteCompression(true)
-
-			for {
-				typ, b, err := wsconn.ReadMessage()
-				if err != nil {
-					fmt.Println("err")
-					return
-				}
-
-				if typ != websocket.TextMessage {
-					fmt.Println("skip")
-					continue
-				}
-
-				msgs <- b
-			}
-		},
-	)
-
-	go http.ListenAndServe(":4197", nil)
-
+func New(cfg config.Config) (*Controller, error) {
+	events := make(chan []byte, 1)
 	ctl := &Controller{
-		msgs: msgs,
-		ws:   nil,
+		config: cfg,
+		events: events,
+		ws:     nil,
 	}
 
 	return ctl, nil
@@ -132,50 +109,65 @@ func New() (*Controller, error) {
 //	}
 //}
 
-func (ctl *Controller) Route(e events.Event, b []byte) {
-	switch e.Type {
-	case events.Ambilight:
-		ctl.HandleAmbilightEvent(b)
-	case events.Reload:
-		ctl.HandleReloadEvent(b)
+func (c *Controller) Handle(typ event.Type, b []byte) {
+	switch typ {
+	case event.Update:
+		c.HandleUpdateEvent(b)
+	case event.Render:
+		c.HandleRenderEvent(b)
 	default:
 		fmt.Println("unknown event")
 	}
 }
 
-func (ctl *Controller) Start() error {
-	//ws, err := ws281x.Init(18, 83, 255, "GRB")
-	//if err != nil {
-	//	return err
-	//}
-
-	//ctl.ws = ws
-
-	go func() {
-		for b := range ctl.msgs {
-			var e events.Event
-
-			err := json.Unmarshal(b, &e)
+func (c *Controller) Start() error {
+	http.HandleFunc(
+		"/ws", func(w http.ResponseWriter, req *http.Request) {
+			wsconn, err := upgrader.Upgrade(w, req, nil)
 			if err != nil {
-				fmt.Println("m")
-				//fmt.Println(err)
-				continue
+				fmt.Println(err)
+				return
 			}
 
-			ctl.Route(e, b)
-		}
-	}()
+			wsconn.EnableWriteCompression(true)
+
+			for {
+				typ, b, err := wsconn.ReadMessage()
+				if err != nil {
+					fmt.Println("error during read", err)
+					return
+				}
+
+				if typ != websocket.TextMessage {
+					fmt.Println("invalid message type")
+					continue
+				}
+
+				var e event.Event
+				err = json.Unmarshal(b, &e)
+				if err != nil {
+					fmt.Println("invalid event format")
+					continue
+				}
+
+				c.Handle(e.Type, b)
+			}
+		},
+	)
+
+	go http.ListenAndServe(":4197", nil)
+
 	return nil
 }
 
-func (ctl *Controller) reload(gpioPin, ledsCount, brightness int, stripType string, segments []events.SegmentConfig) error {
-	if ctl.ws != nil {
-		err := ctl.ws.Clear()
+func (c *Controller) reload(gpioPin, ledsCount, brightness int, stripType string) error {
+	if c.ws != nil {
+		err := c.ws.Clear()
 		if err != nil {
 			return err
 		}
 
-		ctl.ws.Fini()
+		c.ws.Fini()
 	}
 
 	engine, err := ws281x.Init(gpioPin, ledsCount, brightness, stripType)
@@ -183,27 +175,26 @@ func (ctl *Controller) reload(gpioPin, ledsCount, brightness int, stripType stri
 		return err
 	}
 
-	ctl.ws = engine
-	ctl.segments = []Segment{}
+	c.ws = engine
 
-	i := 0
-	for _, s := range segments {
-		ctl.segments = append(
-			ctl.segments, Segment{
-				id:    s.Id,
-				start: i,
-				end:   i + s.Leds,
-			},
-		)
-
-		i += s.Leds
-	}
+	//i := 0
+	//for _, s := range segments {
+	//	c.segments = append(
+	//		c.segments, Segment{
+	//			id:    s.Id,
+	//			start: i,
+	//			end:   i + s.Leds,
+	//		},
+	//	)
+	//
+	//	i += s.Leds
+	//}
 
 	return nil
 }
 
-func (ctl *Controller) HandleReloadEvent(b []byte) {
-	var evt events.ReloadEvent
+func (c *Controller) HandleUpdateEvent(b []byte) {
+	var evt event.UpdateEvent
 
 	err := json.Unmarshal(b, &evt)
 	if err != nil {
@@ -211,89 +202,91 @@ func (ctl *Controller) HandleReloadEvent(b []byte) {
 		return
 	}
 
-	err = ctl.reload(evt.GpioPin, evt.Leds, evt.Brightness, evt.StripType, evt.Segments)
+	cfg := evt.Segments[0]
+
+	err = c.reload(cfg.GpioPin, cfg.Leds, cfg.Brightness, cfg.StripType)
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
-func (ctl *Controller) HandleAmbilightEvent(b []byte) {
-	if ctl.ws == nil {
+func (c *Controller) HandleRenderEvent(b []byte) {
+	if c.ws == nil {
 		return
 	}
 
-	var evt events.AmbilightEvent
+	var evt event.SetLedsEvent
 	err := json.Unmarshal(b, &evt)
 	if err != nil {
 		panic(err)
 	}
 
-	if ctl.mode != Ambilight {
-		ctl.ws.Stop()
-		ctl.mode = Ambilight
+	if c.mode != Render {
+		c.ws.Stop()
+		c.mode = Render
 	}
 
 	//out := "\n"
 	for _, seg := range evt.Segments {
-		if len(ctl.segments) <= seg.Id {
+		if len(c.config.Segments) <= seg.Id {
 			panic("segment doesn't exist")
 		}
 
-		segment := ctl.segments[seg.Id]
-
-		for i := 0; i < (segment.end-segment.start)*4; i += 4 {
-			// Parse color data for current LED
-			r := seg.Pix[i]
-			g := seg.Pix[i+1]
-			b := seg.Pix[i+2]
-			// Set the current LED's color
-			// Not need to check for error
-			err := ctl.ws.SetLedColor(i/4+segment.start, r, g, b)
-			if err != nil {
-				fmt.Println(err)
-			}
-
-			//out += color.RGB(seg.Pix[i], seg.Pix[i+1], seg.Pix[i+2], true).Sprintf(" ")
-		}
+		//segment := c.config.Segments[seg.Id]
+		//
+		//for i := 0; i < (segment.end-segment.start)*4; i += 4 {
+		//	// Parse color data for current LED
+		//	r := seg.Pix[i]
+		//	g := seg.Pix[i+1]
+		//	b := seg.Pix[i+2]
+		//	// Set the current LED's color
+		//	// Not need to check for error
+		//	err := c.ws.SetLedColor(i/4+segment.start, r, g, b)
+		//	if err != nil {
+		//		fmt.Println(err)
+		//	}
+		//
+		//	//out += color.RGB(seg.Pix[i], seg.Pix[i+1], seg.Pix[i+2], true).Sprintf(" ")
+		//}
 
 	}
 	//fmt.Print(out)
 
-	ctl.mux.Lock()
-	if ctl.rendering {
-		ctl.mux.Unlock()
+	c.mux.Lock()
+	if c.rendering {
+		c.mux.Unlock()
 
 		return
 	}
 
-	ctl.rendering = true
-	ctl.mux.Unlock()
+	c.rendering = true
+	c.mux.Unlock()
 
 	go func() {
 		defer func() {
-			ctl.mux.Lock()
-			ctl.rendering = false
-			ctl.mux.Unlock()
+			c.mux.Lock()
+			c.rendering = false
+			c.mux.Unlock()
 		}()
 
-		err = ctl.ws.Render()
+		err = c.ws.Render()
 		if err != nil {
 			fmt.Println(err)
 		}
 	}()
 
 	// TODO: properly handle out of bounds
-	//if ctl.leds != len(evt.Data) / 4 {
-	//	ctl.leds = len(evt.Data) / 4
+	//if c.leds != len(evt.Data) / 4 {
+	//	c.leds = len(evt.Data) / 4
 	//}
 
-	//if ctl.rendering {
+	//if c.rendering {
 	//	return
 	//}
 	//
-	//ctl.rendering = true
+	//c.rendering = true
 
-	//segment = ctl.segments[1]
+	//segment = c.segments[1]
 	//
 	//for i := 0; i < (segment.end-segment.start)*4; i += 4 {
 	//	// Parse color data for current LED
@@ -302,13 +295,13 @@ func (ctl *Controller) HandleAmbilightEvent(b []byte) {
 	//	b := evt.Data[i+2]
 	//	// Set the current LED's color
 	//	// Not need to check for error
-	//	err := ctl.ws.SetLedColor(i/4+segment.start, r, g, b)
+	//	err := c.ws.SetLedColor(i/4+segment.start, r, g, b)
 	//	if err != nil {
 	//		fmt.Println(err)
 	//	}
 	//}
 
-	//ctl.rendering = false
+	//c.rendering = false
 	//}
 
 	//fmt.Print(evt.SegmentId)

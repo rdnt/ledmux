@@ -43,13 +43,9 @@ func New(colors ...colorful.Color) (Gradient, error) {
 	g := Gradient{}
 
 	for i, clr := range colors {
-		r, gg, b, _ := clr.RGBA()
+		r, gg, b := clr.RGB255()
 
-		r = r >> 8
-		gg = gg >> 8
-		b = b >> 8
-
-		color.RGB(uint8(r), uint8(gg), uint8(b), true).Print("    ")
+		color.RGB(r, gg, b, true).Print("    ")
 		g = append(g, Keypoint{
 			Color:    clr,
 			Position: float64(i) / float64(len(colors)-1),

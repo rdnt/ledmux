@@ -5,8 +5,8 @@ import (
 	"os"
 	"os/signal"
 
-	"ledctl3/internal/client/config"
 	"ledctl3/internal/server"
+	"ledctl3/internal/server/config"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
 		panic(err)
 	}
 
-	ctl, err := server.New()
+	ctl, err := server.New(cfg)
 	if err != nil {
 		panic(err)
 	}

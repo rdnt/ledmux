@@ -10,7 +10,7 @@ import (
 	"ledctl3/internal/client/controller"
 	"ledctl3/internal/client/controller/audio"
 	"ledctl3/internal/client/controller/video"
-	"ledctl3/internal/pkg/events"
+	"ledctl3/internal/pkg/event"
 
 	"github.com/gorilla/websocket"
 	"github.com/lucasb-eyer/go-colorful"
@@ -180,18 +180,18 @@ func (a *App) Start() error {
 }
 
 func (a *App) reload() error {
-	segments := []events.SegmentConfig{}
+	segments := []event.SegmentConfig{}
 
 	for _, s := range a.Segments {
 		segments = append(
-			segments, events.SegmentConfig{
+			segments, event.SegmentConfig{
 				Id:   s.Id,
 				Leds: s.Leds,
 			},
 		)
 	}
 
-	e := events.NewReloadEvent(a.Leds, string(a.StripType), a.GpioPin, a.Brightness, segments)
+	e := event.NewUpdateEvent(a.Leds, string(a.StripType), a.GpioPin, a.Brightness, segments)
 
 	b, err := json.Marshal(e)
 	if err != nil {
