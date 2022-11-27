@@ -15,7 +15,7 @@ func main() {
 		panic(err)
 	}
 
-	ctl, err := server.New(cfg)
+	ctl, err := application.New(cfg)
 	if err != nil {
 		panic(err)
 	}

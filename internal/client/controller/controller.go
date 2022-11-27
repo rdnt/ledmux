@@ -133,10 +133,10 @@ func (ctl *Controller) SetMode(mode Mode) error {
 				ctl.timing.process.Add(float64(evt.Duration.Nanoseconds()))
 				ctl.timingMux.Unlock()
 
-				segs := []event.Segment{}
+				segs := []event.SetLedsEventSegment{}
 
 				for _, seg := range evt.Segments {
-					segs = append(segs, event.Segment{
+					segs = append(segs, event.SetLedsEventSegment{
 						Id:  seg.Id,
 						Pix: seg.Pix,
 					})

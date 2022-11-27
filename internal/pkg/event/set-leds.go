@@ -13,7 +13,7 @@ type SetLedsEventSegment struct {
 func NewSetLedsEvent(segments []SetLedsEventSegment) SetLedsEvent {
 	return SetLedsEvent{
 		Event: Event{
-			Type: Render,
+			Type: SetLeds,
 		},
 		Segments: segments,
 	}

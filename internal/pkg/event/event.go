@@ -4,7 +4,7 @@ type Type string
 
 const (
 	Update      Type = "update"
-	Render      Type = "render"
+	SetLeds     Type = "set-leds"
 	SetColor    Type = "set-color"
 	SetEffect   Type = "set-effect"
 	SetGradient Type = "set-gradient"

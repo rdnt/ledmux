@@ -6,15 +6,15 @@ import (
 )
 
 type Config struct {
-	Segments []Segment `yaml:"segments" json:"segments"`
+	StripType  string    `yaml:"stripType" json:"stripType"`
+	GpioPin    int       `yaml:"gpioPin" json:"gpioPin"`
+	Brightness int       `yaml:"brightness" json:"brightness"`
+	Segments   []Segment `yaml:"segments" json:"segments"`
 }
 
 type Segment struct {
-	Id         int    `yaml:"id" json:"id"`
-	Leds       int    `yaml:"leds" json:"leds"`
-	StripType  string `yaml:"stripType" json:"stripType"`
-	GpioPin    int    `yaml:"gpioPin" json:"gpioPin"`
-	Brightness int    `yaml:"brightness" json:"brightness"`
+	Id   int `yaml:"id" json:"id"`
+	Leds int `yaml:"leds" json:"leds"`
 }
 
 var name = "ledctl.json"
@@ -57,13 +57,13 @@ func Load() (Config, error) {
 
 func createDefault() (Config, error) {
 	c := Config{
+		StripType:  "rgb",
+		GpioPin:    18,
+		Brightness: 255,
 		Segments: []Segment{
 			{
-				Id:         0,
-				Leds:       100,
-				StripType:  "rgb",
-				GpioPin:    18,
-				Brightness: 255,
+				Id:   0,
+				Leds: 100,
 			},
 		},
 	}
