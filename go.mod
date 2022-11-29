@@ -7,7 +7,6 @@ require (
 	github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b
 	github.com/getlantern/systray v1.2.1
 	github.com/go-ole/go-ole v1.2.6
-	github.com/google/uuid v1.2.0
 	github.com/gookit/color v1.5.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/kbinani/screenshot v0.0.0-20210720154843-7d3a670d8329
@@ -18,7 +17,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rpi-ws281x/rpi-ws281x-go v1.0.8
 	github.com/sgreben/piecewiselinear v1.1.1
-	github.com/vmihailenco/msgpack/v5 v5.3.5
+	golang.org/x/exp v0.0.0-20221126150942-6ab00d035af9
 	gonum.org/v1/gonum v0.11.0
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 )
@@ -32,12 +31,11 @@ require (
 	github.com/getlantern/hidden v0.0.0-20190325191715-f02dbb02be55 // indirect
 	github.com/getlantern/ops v0.0.0-20190325191751-d70cb0d6f85f // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
+	github.com/google/uuid v1.2.0 // indirect
 	github.com/jezek/xgb v0.0.0-20210312150743-0e0f116e1240 // indirect
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
-	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
-	golang.org/x/exp v0.0.0-20221126150942-6ab00d035af9 // indirect
 	golang.org/x/sys v0.1.0 // indirect
 )
 

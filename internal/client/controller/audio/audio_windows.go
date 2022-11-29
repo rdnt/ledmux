@@ -10,6 +10,8 @@ import (
 	"time"
 	"unsafe"
 
+	"ledctl3/internal/client/controller/audio/mi"
+
 	"github.com/go-ole/go-ole"
 	gcolor "github.com/gookit/color"
 	"github.com/lucasb-eyer/go-colorful"
@@ -114,6 +116,12 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 		return err
 	}
 	defer ac.Release()
+
+	var ami *mi.IAudioMeterInformation
+	if err := mmd.Activate(wca.IID_IAudioMeterInformation, wca.CLSCTX_ALL, nil, &ami); err != nil {
+		return err
+	}
+	defer ami.Release()
 
 	var wfx *wca.WAVEFORMATEX
 	if err := ac.GetMixFormat(&wfx); err != nil {
@@ -238,7 +246,13 @@ loop:
 				samples = append(samples, v)
 			}
 
-			go v.process(samples)
+			var peak float32
+			err = ami.GetPeakValue(&peak)
+			if err != nil {
+				continue
+			}
+
+			go v.process(samples, float64(peak))
 
 			if err = acc.ReleaseBuffer(availableFrameSize); err != nil {
 				return errors.WithMessage(err, "failed to ReleaseBuffer")
@@ -313,7 +327,7 @@ func reverse[S ~[]E, E any](s S) {
 
 var it int
 
-func (v *Visualizer) process(samples []float64) {
+func (v *Visualizer) process(samples []float64, peak float64) {
 	now := time.Now()
 
 	v.mux.Lock()
@@ -352,16 +366,30 @@ func (v *Visualizer) process(samples []float64) {
 	var maxfreq float64
 
 	coeff = coeff[:len(coeff)/2]
-	var maxidx int
-	for i, c := range coeff {
+	for _, c := range coeff {
 		freqs = append(freqs, cmplx.Abs(c))
 		if cmplx.Abs(c) > maxfreq {
 			maxfreq = cmplx.Abs(c)
-			maxidx = i
 		}
 	}
 
-	fmt.Print(maxidx)
+	//fmt.Print(e)
+	if peak == 0 {
+		for i := range freqs {
+			freqs[i] = 0
+		}
+	} else {
+		//fmt.Print(peak)
+		//for i := range freqs {
+		//	freqs[i] = freqs[i] * float64(peak)
+		//}
+	}
+
+	//for i := range freqs {
+	//	freqs[i] = freqs[i] * e
+	//}
+
+	//fmt.Print(maxidx)
 
 	//fmt.Println(maxfreq / float64(math.MaxUint64))
 
@@ -396,7 +424,7 @@ func (v *Visualizer) process(samples []float64) {
 
 	pix := []byte{}
 
-	max := math.Max(math.Min((maxfreq)/float64(math.MaxUint16)/3, 1), 0.25)
+	//max := math.Max(math.Min((maxfreq)/float64(math.MaxUint16)/3, 1), 0.25)
 
 	//for i := maxLeds - 1; i >= 0; i-- {
 	for i := 0; i < maxLeds; i++ {
@@ -434,13 +462,13 @@ func (v *Visualizer) process(samples []float64) {
 		//val = val*0.5 + math.Min(e, 1)*val*0.5
 
 		//hue = math.Min(e, 1) * hue
-		////val = math.Min(e, 1) * val
 		//sat = math.Min(e, 1) * sat
 
-		val = val + val*(max)
+		//val = val + val*(max)
+		val = math.Min(peak*5, 1) * val
 		val = math.Min(val, 1)
 		val = math.Max(val, 0)
-		val = 0.75 + val*0.25
+		val = 0.25 + val*0.75
 		//val = math.Max(val, max)
 
 		// @@@@@@ reset
