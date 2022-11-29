@@ -287,6 +287,12 @@ func readInt32(b []byte) int32 {
 	return int32(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24)
 }
 
+// readInt32 reads a signed integer from a byte slice. only a slice with len(2)
+// should be passed. equivalent of int16(binary.LittleEndian.Uint16(b))
+func readInt16(b []byte) int16 {
+	return int16(uint32(b[0]) | uint32(b[1])<<8)
+}
+
 func SpanLog(min, max float64, nPoints int) []float64 {
 	X := make([]float64, nPoints)
 	min, max = math.Min(max, min), math.Max(max, min)
@@ -304,6 +310,8 @@ func reverse[S ~[]E, E any](s S) {
 		s[i], s[j] = s[j], s[i]
 	}
 }
+
+var it int
 
 func (v *Visualizer) process(samples []float64) {
 	now := time.Now()
@@ -342,17 +350,23 @@ func (v *Visualizer) process(samples []float64) {
 
 	freqs := []float64{}
 	var maxfreq float64
-	for _, c := range coeff {
+
+	coeff = coeff[:len(coeff)/2]
+	var maxidx int
+	for i, c := range coeff {
 		freqs = append(freqs, cmplx.Abs(c))
 		if cmplx.Abs(c) > maxfreq {
 			maxfreq = cmplx.Abs(c)
+			maxidx = i
 		}
 	}
+
+	fmt.Print(maxidx)
 
 	//fmt.Println(maxfreq / float64(math.MaxUint64))
 
 	// Only keep the first half of the fft
-	freqs = freqs[:len(freqs)/2]
+	//freqs = freqs[:len(freqs)/2]
 
 	for i, f := range freqs {
 		norm := normalize(f, 0, maxfreq)
@@ -365,27 +379,24 @@ func (v *Visualizer) process(samples []float64) {
 
 	maxLeds := v.maxLedCount
 
-	freqsmax := maxLeds / 2
-	//freqsmax := maxLeds
-
-	freqs = make([]float64, freqsmax)
-	for i := 0; i < freqsmax; i++ {
-		freqs[i] = f.At(float64(i) / float64(freqsmax-1))
+	freqs = make([]float64, maxLeds)
+	for i := 0; i < maxLeds; i++ {
+		freqs[i] = f.At(float64(i) / float64(maxLeds-1))
 	}
 
-	p2 := make([]float64, maxLeds/2)
-	copy(p2, freqs)
-
-	reverse(freqs) // freqs or p2
-
-	freqs = append(p2, freqs...)
+	//p2 := make([]float64, maxLeds/2)
+	//copy(p2, freqs)
+	//
+	//reverse(freqs) // freqs or p2
+	//
+	//freqs = append(p2, freqs...)
 
 	//rand.Seed(time.Now().UnixMilli() / 500)
 	//rand.Shuffle(len(freqs), func(i, j int) { freqs[i], freqs[j] = freqs[j], freqs[i] })
 
 	pix := []byte{}
 
-	max := math.Max(math.Min((maxfreq)/float64(math.MaxUint32)/3, 1), 0.25)
+	max := math.Max(math.Min((maxfreq)/float64(math.MaxUint16)/3, 1), 0.25)
 
 	//for i := maxLeds - 1; i >= 0; i-- {
 	for i := 0; i < maxLeds; i++ {
@@ -505,13 +516,14 @@ func (v *Visualizer) process(samples []float64) {
 		pix := pix4[:seg.Leds*4]
 
 		if seg.Id == 0 {
-			out := "\r"
+			out := "\n"
 			//out := "\n"
 			for i := 0; i < len(pix); i += 4 {
 				out += gcolor.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
 			}
 			fmt.Print(out)
 		}
+		it++
 
 		segs = append(segs, visualizer.Segment{
 			Id:  seg.Id,

@@ -75,8 +75,8 @@ func (e *Engine) Render() error {
 		return err
 	}
 
-	out := "\r"
-	for i := 0.0; i <= 1.0; i += 0.01 {
+	out := "\n"
+	for i := 0.0; i <= 1.0; i += 0.014 {
 		c := g.GetInterpolatedColor(i)
 		r, g, b, _ := c.RGBA()
 		out += gcolor.RGB(uint8(r>>8), uint8(g>>8), uint8(b>>8), true).Sprint(" ")
@@ -84,7 +84,7 @@ func (e *Engine) Render() error {
 
 	fmt.Print(out)
 
-	//time.Sleep(10 * time.Millisecond)
+	//time.Sleep(20 * time.Millisecond)
 
 	return nil
 }
