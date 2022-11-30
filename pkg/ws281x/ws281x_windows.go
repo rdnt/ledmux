@@ -7,8 +7,6 @@ import (
 	"image/color"
 	"sync"
 
-	"ledctl3/pkg/gradient"
-
 	gcolor "github.com/gookit/color"
 )
 
@@ -70,21 +68,27 @@ func (*Engine) Clear() error {
 // Render placeholder
 func (e *Engine) Render() error {
 	//fmt.Println()
-	g, err := gradient.New(e.leds...)
-	if err != nil {
-		return err
-	}
 
 	out := "\n"
-	for i := 0.0; i <= 1.0; i += 0.014 {
-		c := g.GetInterpolatedColor(i)
+	for _, c := range e.leds {
 		r, g, b, _ := c.RGBA()
 		out += gcolor.RGB(uint8(r>>8), uint8(g>>8), uint8(b>>8), true).Sprint(" ")
 	}
-
 	fmt.Print(out)
 
-	//time.Sleep(20 * time.Millisecond)
+	//g, err := gradient.New(e.leds...)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//out := "\n"
+	//for i := 0.0; i <= 1.0; i += 0.014 {
+	//	c := g.GetInterpolatedColor(i)
+	//	r, g, b, _ := c.RGBA()
+	//	out += gcolor.RGB(uint8(r>>8), uint8(g>>8), uint8(b>>8), true).Sprint(" ")
+	//}
+	//
+	//fmt.Print(out)
 
 	return nil
 }

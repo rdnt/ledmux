@@ -36,6 +36,7 @@ require (
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
+	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.1.0 // indirect
 )
 

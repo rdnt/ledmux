@@ -1,4 +1,6 @@
-package mi
+// Package wca_ami includes interfaces for the AudioMeterInformation API.
+// Taken from https://github.com/moutend/go-wca/pull/11
+package wca_ami
 
 import (
 	"syscall"
