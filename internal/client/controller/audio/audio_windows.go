@@ -51,6 +51,11 @@ type Visualizer struct {
 	average map[int]sliceewma.MovingAverage
 }
 
+type Segment struct {
+	Id   int
+	Leds int
+}
+
 // frame represents an audio frame
 type frame struct {
 	// samples is a collection of PCM samples encoded as float64
@@ -371,22 +376,85 @@ func readInt32(b []byte) int32 {
 	return int32(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24)
 }
 
-func scaleLog(min, max float64, nPoints int) []float64 {
-	X := make([]float64, nPoints)
-	min, max = math.Min(max, min), math.Max(max, min)
-	d := max - min
-	for i := range X {
-		v := min + d*(float64(i)/float64(nPoints-1))
-		v = math.Pow(v, 0.5)
-		X[i] = v
-	}
-	return X
-}
+// processFrame analyses the audio frame, extracts frequency information and
+// creates the necessary update event
+func (v *Visualizer) processFrame(samples []float64, peak float64) error {
+	now := time.Now()
 
-func reverse[S ~[]E, E any](s S) {
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
+	if peak < 1e-9 {
+		// skip calculations, set all frequencies to 0
+		// TODO: Send reset event
+		return nil
 	}
+
+	// Extract frequency magnitudes using a fast fourier transform
+	fft := fourier.NewFFT(len(samples))
+	coeffs := fft.Coefficients(nil, window.Hamming(samples))
+
+	// Only keep the real part of the fft, and also remove frequencies between
+	// 19.2~ and 24 khz. x / 2 * 0.8 --> x * 2 / 5
+	coeffs = coeffs[:len(coeffs)*2/5]
+
+	// Get a logarithmic piecewise-interpolated projection of the frequencies
+	freqs := calculateFrequencies(coeffs)
+
+	segs := make([]visualizer.Segment, 0, len(v.segments))
+
+	for _, seg := range v.segments {
+		vals := make([]float64, 0, seg.Leds*4)
+
+		for i := 0; i < seg.Leds; i++ {
+			magn := freqs.At(float64(i) / float64(seg.Leds-1))
+
+			c := v.gradient.GetInterpolatedColor(magn)
+			clr, _ := colorful.MakeColor(c)
+
+			hue, sat, val := clr.Hsv()
+
+			// easeOutCirc, ref: https://easings.net/#easeOutCirc
+			// should help exaggerate low values in magnitude e.g. high
+			// frequency notes
+			val = math.Sqrt(1 - math.Pow(magn-1, 2))
+
+			hsv := colorful.Hsv(hue, sat, val)
+
+			r, g, b, _ := hsv.RGBA()
+
+			vals = append(vals, float64(r), float64(g), float64(b), 0)
+		}
+
+		// Add the colo data to the moving average accumulator for this segment
+		v.average[seg.Id].Add(vals)
+		// Get the averaged color data
+		vals = v.average[seg.Id].Value()
+
+		// Create the pix slice from the color data
+		pix := make([]uint8, len(vals))
+		for j := 0; j < len(vals); j++ {
+			pix[j] = uint8(uint16(vals[j]) >> 8)
+		}
+
+		// DEBUG
+		if seg.Id == 0 {
+			out := "\n"
+			for i := 0; i < len(pix); i += 4 {
+				out += gcolor.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
+			}
+			fmt.Print(out)
+		}
+
+		segs = append(segs, visualizer.Segment{
+			Id:  seg.Id,
+			Pix: pix,
+		})
+	}
+
+	v.events <- visualizer.UpdateEvent{
+		Segments: segs,
+		Duration: time.Since(now),
+	}
+
+	return nil
 }
 
 func calculateFrequencies(coeffs []complex128) piecewiselinear.Function {
@@ -411,90 +479,9 @@ func calculateFrequencies(coeffs []complex128) piecewiselinear.Function {
 	// Perform piecewise linear interpolation between frequencies. Also scale
 	// frequencies logarithmically so that low ones are more pronounced.
 	f := piecewiselinear.Function{Y: freqs}
-
 	f.X = scaleLog(0, 1, len(f.Y))
 
 	return f
-}
-
-// processFrame analyses the audio frame, extracts frequency information and
-// creates the necessary update event
-func (v *Visualizer) processFrame(samples []float64, peak float64) error {
-	now := time.Now()
-
-	if peak < 1e-9 {
-		// skip calculations, set all frequencies to 0
-		// TODO: Send reset event
-		return nil
-	}
-
-	// Extract frequency magnitudes using a fast fourier transform
-	fft := fourier.NewFFT(len(samples))
-	coeffs := fft.Coefficients(nil, window.Hamming(samples))
-
-	// Only keep the real part of the fft
-	// TODO: how to remove upper 20-24Khz?
-	coeffs = coeffs[:len(coeffs)/2]
-
-	// Get a logarithmic piecewise-interpolated projection of the frequencies
-	freqs := calculateFrequencies(coeffs)
-
-	segs := make([]visualizer.Segment, 0, len(v.segments))
-
-	for _, seg := range v.segments {
-		vals := make([]float64, 0, seg.Leds*4)
-
-		for i := 0; i < seg.Leds; i++ {
-			pos := freqs.At(float64(i) / float64(seg.Leds-1))
-
-			c := v.gradient.GetInterpolatedColor(pos)
-			clr, _ := colorful.MakeColor(c)
-
-			hue, sat, val := clr.Hsv()
-
-			val = math.Sqrt(1 - math.Pow(pos-1, 2))
-
-			val = math.Min(peak*5, 1) * val
-			val = math.Min(val, 1)
-			val = math.Max(val, 0)
-			val = 0.25 + val*0.75
-
-			hsv := colorful.Hsv(hue, sat, val)
-
-			r, g, b, _ := hsv.RGBA()
-
-			vals = append(vals, float64(r), float64(g), float64(b), 0)
-		}
-
-		v.average[seg.Id].Add(vals)
-
-		vals = v.average[seg.Id].Value()
-
-		pix := make([]uint8, len(vals))
-		for j := 0; j < len(vals); j++ {
-			pix[j] = uint8(uint16(vals[j]) >> 8)
-		}
-
-		if seg.Id == 0 {
-			out := "\n"
-			for i := 0; i < len(pix); i += 4 {
-				out += gcolor.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
-			}
-			fmt.Print(out)
-		}
-
-		segs = append(segs, visualizer.Segment{
-			Id:  seg.Id,
-			Pix: pix,
-		})
-	}
-
-	v.events <- visualizer.UpdateEvent{
-		Segments: segs,
-		Duration: time.Since(now),
-	}
-
-	return nil
 }
 
 // normalize scales a value from min,max to 0,1
@@ -506,7 +493,23 @@ func normalize(val, min, max float64) float64 {
 	return (val - min) / (max - min)
 }
 
-var pixs [][]byte
+func scaleLog(min, max float64, nPoints int) []float64 {
+	X := make([]float64, nPoints)
+	min, max = math.Min(max, min), math.Max(max, min)
+	d := max - min
+	for i := range X {
+		v := min + d*(float64(i)/float64(nPoints-1))
+		v = math.Pow(v, 0.5)
+		X[i] = v
+	}
+	return X
+}
+
+func reverse[S ~[]E, E any](s S) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+}
 
 func New(opts ...Option) (v *Visualizer, err error) {
 	v = new(Visualizer)
@@ -528,14 +531,11 @@ func New(opts ...Option) (v *Visualizer, err error) {
 	v.average = make(map[int]sliceewma.MovingAverage, len(v.segments))
 
 	for _, seg := range v.segments {
-		v.average[seg.Id] = sliceewma.NewMovingAverage(seg.Leds*4, 10, // <--- window
+		v.average[seg.Id] = sliceewma.NewMovingAverage(
+			seg.Leds*4,
+			float64(v.windowSize),
 		)
 	}
 
 	return v, nil
-}
-
-type Segment struct {
-	Id   int
-	Leds int
 }
