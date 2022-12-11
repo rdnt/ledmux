@@ -1,7 +1,7 @@
 package event
 
 type SetLedsEvent struct {
-	Event
+	Event    Type                  `json:"event"`
 	Segments []SetLedsEventSegment `json:"segments"`
 }
 
@@ -10,11 +10,6 @@ type SetLedsEventSegment struct {
 	Pix []byte `json:"pix"`
 }
 
-func NewSetLedsEvent(segments []SetLedsEventSegment) SetLedsEvent {
-	return SetLedsEvent{
-		Event: Event{
-			Type: SetLeds,
-		},
-		Segments: segments,
-	}
+func (e SetLedsEvent) Type() Type {
+	return SetLeds
 }

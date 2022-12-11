@@ -21,6 +21,7 @@ func (a *Application) applyConfig(c config.Config) (err error) {
 	for _, seg := range c.Segments {
 		segs = append(segs, Segment{
 			id:    seg.Id,
+			leds:  leds,
 			start: leds,
 			end:   leds + seg.Leds,
 		})

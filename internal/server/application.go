@@ -57,6 +57,7 @@ type Segment struct {
 	id    int
 	start int
 	end   int
+	leds  int
 }
 
 var upgrader = websocket.Upgrader{
@@ -92,8 +93,8 @@ func New(c config.Config) (*Application, error) {
 	return a, nil
 }
 
-//func (ctl *Application) Handle(e events.Event) {
-//	switch e.Type {
+//func (ctl *Application) Handle(e events.EventWithType) {
+//	switch e.EventWithType {
 //	case events.Ambilight:
 //		if ctl.mode != Ambilight {
 //			ctl.ws.Stop()
@@ -146,6 +147,8 @@ func (a *Application) Start() error {
 				return
 			}
 
+			a.HandleConnected(wsconn)
+
 			wsconn.EnableWriteCompression(true)
 
 			for {
@@ -160,14 +163,13 @@ func (a *Application) Start() error {
 					continue
 				}
 
-				var e event.Event
-				err = json.Unmarshal(b, &e)
+				evts, err := ParseMessage(b)
 				if err != nil {
-					fmt.Println("invalid event format")
+					fmt.Println("invalid message format")
 					continue
 				}
 
-				a.Handle(e.Type, b)
+				a.ProcessEvents(evts)
 			}
 		},
 	)
@@ -261,9 +263,10 @@ func (a *Application) HandleSetLedsEvent(b []byte) {
 			r := seg.Pix[i]
 			g := seg.Pix[i+1]
 			b := seg.Pix[i+2]
+			aa := seg.Pix[i+3]
 			// Set the current LED's color
 			// Not need to check for error
-			err := a.ws.SetLedColor(i/4+segment.start, r, g, b)
+			err := a.ws.SetLedColor(i/4+segment.start, r, g, b, aa)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -327,4 +330,41 @@ func (a *Application) HandleSetLedsEvent(b []byte) {
 	//}
 
 	//fmt.Print(evt.SegmentId)
+}
+
+func (a *Application) HandleConnected(wsconn *websocket.Conn) {
+	segs := make([]event.ConnectedEventSegment, len(a.segments))
+	for i, seg := range a.segments {
+		segs[i] = event.ConnectedEventSegment{
+			Id:   seg.id,
+			Leds: seg.leds,
+		}
+	}
+
+	e := event.ConnectedEvent{
+		Event:      event.Connected,
+		Brightness: a.brightness,
+		GpioPin:    a.gpioPin,
+		StripType:  a.stripType,
+		Segments:   segs,
+	}
+
+	b, err := json.Marshal(e)
+	if err != nil {
+		panic(err)
+	}
+
+	err = wsconn.WriteMessage(websocket.TextMessage, b)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (a *Application) ProcessEvents(evts []event.Event) {
+	//for _, e := range evts {
+	//	switch e.EventWithType {
+	//	case event.SetLeds:
+	//		a.HandleSetLedsEvent(e)
+	//	}
+	//}
 }

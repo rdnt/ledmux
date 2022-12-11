@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"image/color"
 	"sync"
@@ -10,6 +11,7 @@ import (
 	"ledctl3/internal/client/controller"
 	"ledctl3/internal/client/controller/audio"
 	"ledctl3/internal/client/controller/video"
+	"ledctl3/internal/pkg/event"
 
 	"github.com/gorilla/websocket"
 )
@@ -158,6 +160,30 @@ func (a *Application) Start() error {
 					a.conn = conn
 					a.connMux.Unlock()
 
+					for {
+						typ, b, err := conn.ReadMessage()
+						if err != nil {
+							a.connMux.Lock()
+							a.conn = nil
+							a.connMux.Unlock()
+							return
+						}
+
+						if typ != websocket.TextMessage {
+							fmt.Println("invalid message type")
+							continue
+						}
+
+						var e event.Event
+						err = json.Unmarshal(b, &e)
+						if err != nil {
+							fmt.Println("invalid event format")
+							continue
+						}
+
+						a.Handle(e.Type, b)
+					}
+
 					//err = a.reload()
 					//if err != nil {
 					//	fmt.Println(err)
@@ -220,4 +246,11 @@ func (a *Application) Stop() error {
 	}
 
 	return a.ctl.SetMode(controller.Reset)
+}
+
+func (a *Application) Handle(t event.Type, b []byte) {
+	switch t {
+	case event.Connected:
+
+	}
 }

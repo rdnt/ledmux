@@ -1,7 +1,7 @@
 package event
 
 type TurnOnEvent struct {
-	Event
+	Event    Type                 `json:"event"`
 	Segments []TurnOnEventSegment `json:"segments"`
 }
 
@@ -9,11 +9,6 @@ type TurnOnEventSegment struct {
 	Id int `json:"id"`
 }
 
-func NewTurnOnEvent(segments []TurnOnEventSegment) TurnOnEvent {
-	return TurnOnEvent{
-		Event: Event{
-			Type: TurnOn,
-		},
-		Segments: segments,
-	}
+func (e TurnOnEvent) Type() Type {
+	return TurnOn
 }

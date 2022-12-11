@@ -1,7 +1,7 @@
 package event
 
 type SetColorEvent struct {
-	Event
+	Event    Type                   `json:"event"`
 	Segments []SetColorEventSegment `json:"segments"`
 }
 
@@ -10,11 +10,6 @@ type SetColorEventSegment struct {
 	Color [3]byte `json:"color"`
 }
 
-func NewSetColorEvent(segments []SetColorEventSegment) SetColorEvent {
-	return SetColorEvent{
-		Event: Event{
-			Type: SetColor,
-		},
-		Segments: segments,
-	}
+func (e SetColorEvent) Type() Type {
+	return SetColor
 }

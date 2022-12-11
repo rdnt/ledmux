@@ -3,6 +3,7 @@ package event
 type Type string
 
 const (
+	Connected   Type = "connected"
 	Update      Type = "update"
 	SetLeds     Type = "set-leds"
 	SetColor    Type = "set-color"
@@ -12,6 +13,6 @@ const (
 	TurnOff     Type = "turn-off"
 )
 
-type Event struct {
-	Type Type `json:"event"`
+type Event interface {
+	Type() Type
 }

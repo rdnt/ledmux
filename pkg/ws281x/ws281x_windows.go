@@ -94,13 +94,13 @@ func (e *Engine) Render() error {
 }
 
 // SetLedColor placeholder
-func (e *Engine) SetLedColor(id int, r uint8, g uint8, b uint8) error {
+func (e *Engine) SetLedColor(id int, r uint8, g uint8, b uint8, a uint8) error {
 	//color.RGB(r, g, b, true).Print(" ")
 	e.leds[id] = color.NRGBA{
 		R: r,
 		G: g,
 		B: b,
-		A: 255,
+		A: a,
 	}
 	return nil
 }

@@ -1,7 +1,7 @@
 package event
 
 type SetGradientEvent struct {
-	Event
+	Event    Type                      `json:"event"`
 	Segments []SetGradientEventSegment `json:"segments"`
 }
 
@@ -15,11 +15,6 @@ type SetGradientEventStep struct {
 	Position float64 `json:"position"`
 }
 
-func NewSetGradientEvent(segments []SetGradientEventSegment) SetGradientEvent {
-	return SetGradientEvent{
-		Event: Event{
-			Type: SetGradient,
-		},
-		Segments: segments,
-	}
+func (e SetGradientEvent) Type() Type {
+	return SetGradient
 }

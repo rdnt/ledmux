@@ -8,7 +8,7 @@ const (
 )
 
 type SetEffectEvent struct {
-	Event
+	Event    Type                    `json:"event"`
 	Segments []SetEffectEventSegment `json:"segments"`
 }
 
@@ -17,11 +17,6 @@ type SetEffectEventSegment struct {
 	Effect Effect `json:"effect"`
 }
 
-func NewSetEffectEvent(segments []SetEffectEventSegment) SetEffectEvent {
-	return SetEffectEvent{
-		Event: Event{
-			Type: SetEffect,
-		},
-		Segments: segments,
-	}
+func (e SetEffectEvent) Type() Type {
+	return SetEffect
 }
