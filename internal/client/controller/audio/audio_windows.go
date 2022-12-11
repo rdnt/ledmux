@@ -418,9 +418,9 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 
 			hsv := colorful.Hsv(hue, sat, val)
 
-			r, g, b, _ := hsv.RGBA()
+			r, g, b, a := hsv.RGBA()
 
-			vals = append(vals, float64(r), float64(g), float64(b), 0)
+			vals = append(vals, float64(r), float64(g), float64(b), float64(a))
 		}
 
 		// Add the colo data to the moving average accumulator for this segment
@@ -436,11 +436,11 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 
 		// DEBUG
 		if seg.Id == 0 {
-			out := "\n"
+			out := ""
 			for i := 0; i < len(pix); i += 4 {
 				out += gcolor.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
 			}
-			fmt.Print(out)
+			fmt.Println(out)
 		}
 
 		segs = append(segs, visualizer.Segment{

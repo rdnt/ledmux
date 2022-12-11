@@ -69,12 +69,12 @@ func (*Engine) Clear() error {
 func (e *Engine) Render() error {
 	//fmt.Println()
 
-	out := "\n"
+	out := ""
 	for _, c := range e.leds {
 		r, g, b, _ := c.RGBA()
 		out += gcolor.RGB(uint8(r>>8), uint8(g>>8), uint8(b>>8), true).Sprint(" ")
 	}
-	fmt.Print(out)
+	fmt.Println(out)
 
 	//g, err := gradient.New(e.leds...)
 	//if err != nil {
@@ -95,8 +95,7 @@ func (e *Engine) Render() error {
 
 // SetLedColor placeholder
 func (e *Engine) SetLedColor(id int, r uint8, g uint8, b uint8, a uint8) error {
-	//color.RGB(r, g, b, true).Print(" ")
-	e.leds[id] = color.NRGBA{
+	e.leds[id] = color.RGBA{
 		R: r,
 		G: g,
 		B: b,

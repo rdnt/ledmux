@@ -93,8 +93,8 @@ func New(c config.Config) (*Application, error) {
 	return a, nil
 }
 
-//func (ctl *Application) Handle(e events.EventWithType) {
-//	switch e.EventWithType {
+//func (ctl *Application) Handle(e events.EventType) {
+//	switch e.EventType {
 //	case events.Ambilight:
 //		if ctl.mode != Ambilight {
 //			ctl.ws.Stop()
@@ -127,17 +127,6 @@ func New(c config.Config) (*Application, error) {
 //	}
 //}
 
-func (a *Application) Handle(typ event.Type, b []byte) {
-	switch typ {
-	case event.Update:
-		a.HandleUpdateEvent(b)
-	case event.SetLeds:
-		a.HandleSetLedsEvent(b)
-	default:
-		fmt.Println("unknown event")
-	}
-}
-
 func (a *Application) Start() error {
 	http.HandleFunc(
 		"/ws", func(w http.ResponseWriter, req *http.Request) {
@@ -163,13 +152,13 @@ func (a *Application) Start() error {
 					continue
 				}
 
-				evts, err := ParseMessage(b)
+				events, err := event.Parse(b)
 				if err != nil {
-					fmt.Println("invalid message format")
+					fmt.Println(err)
 					continue
 				}
 
-				a.ProcessEvents(evts)
+				a.ProcessEvents(events...)
 			}
 		},
 	)
@@ -212,124 +201,42 @@ func (a *Application) reload(gpioPin, ledsCount, brightness int, stripType strin
 	return nil
 }
 
-func (a *Application) HandleUpdateEvent(b []byte) {
-	var evt event.UpdateEvent
+func (a *Application) HandleUpdateEvent(e event.UpdateEvent) {
+	cfg := e.Segments[0]
 
-	err := json.Unmarshal(b, &evt)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	cfg := evt.Segments[0]
-
-	err = a.reload(cfg.GpioPin, cfg.Leds, cfg.Brightness, cfg.StripType)
+	err := a.reload(cfg.GpioPin, cfg.Leds, cfg.Brightness, cfg.StripType)
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
-func (a *Application) HandleSetLedsEvent(b []byte) {
-	if a.ws == nil {
+func (a *Application) HandleSetLedsEvent(e event.SetLedsEvent) {
+	idx := slices.IndexFunc(a.segments, func(s Segment) bool {
+		return s.id == e.Id
+	})
+
+	if idx == -1 {
+		fmt.Println("Segment doesn't exist:", e.Id)
 		return
 	}
 
-	var evt event.SetLedsEvent
-	err := json.Unmarshal(b, &evt)
-	if err != nil {
-		panic(err)
-	}
+	segment := a.segments[idx]
 
-	if a.mode != Render {
-		a.ws.Stop()
-		a.mode = Render
-	}
-
-	//out := "\n"
-	for _, seg := range evt.Segments {
-		idx := slices.IndexFunc(a.segments, func(s Segment) bool {
-			return s.id == seg.Id
-		})
-
-		if idx == -1 {
-			fmt.Println("Segment doesn't exist:", seg.Id)
-			return
-		}
-
-		segment := a.segments[idx]
-
-		for i := 0; i < (segment.end-segment.start)*4; i += 4 {
-			// Parse color data for current LED
-			r := seg.Pix[i]
-			g := seg.Pix[i+1]
-			b := seg.Pix[i+2]
-			aa := seg.Pix[i+3]
-			// Set the current LED's color
-			// Not need to check for error
-			err := a.ws.SetLedColor(i/4+segment.start, r, g, b, aa)
-			if err != nil {
-				fmt.Println(err)
-			}
-
-			//out += color.RGB(seg.Pix[i], seg.Pix[i+1], seg.Pix[i+2], true).Sprintf(" ")
-		}
-
-	}
-	//fmt.Print(out)
-
-	a.mux.Lock()
-	if a.rendering {
-		a.mux.Unlock()
-
-		return
-	}
-
-	a.rendering = true
-	a.mux.Unlock()
-
-	go func() {
-		defer func() {
-			a.mux.Lock()
-			a.rendering = false
-			a.mux.Unlock()
-		}()
-
-		err = a.ws.Render()
+	for i := 0; i < (segment.end-segment.start)*4; i += 4 {
+		// Parse color data for current LED
+		r := e.Pix[i]
+		g := e.Pix[i+1]
+		b := e.Pix[i+2]
+		aa := e.Pix[i+3]
+		// Set the current LED's color
+		// Not need to check for error
+		err := a.ws.SetLedColor(i/4+segment.start, r, g, b, aa)
 		if err != nil {
 			fmt.Println(err)
 		}
-	}()
 
-	// TODO: properly handle out of bounds
-	//if a.leds != len(evt.Data) / 4 {
-	//	a.leds = len(evt.Data) / 4
-	//}
-
-	//if a.rendering {
-	//	return
-	//}
-	//
-	//a.rendering = true
-
-	//segment = a.segments[1]
-	//
-	//for i := 0; i < (segment.end-segment.start)*4; i += 4 {
-	//	// Parse color data for current LED
-	//	r := evt.Data[i]
-	//	g := evt.Data[i+1]
-	//	b := evt.Data[i+2]
-	//	// Set the current LED's color
-	//	// Not need to check for error
-	//	err := a.ws.SetLedColor(i/4+segment.start, r, g, b)
-	//	if err != nil {
-	//		fmt.Println(err)
-	//	}
-	//}
-
-	//a.rendering = false
-	//}
-
-	//fmt.Print(evt.SegmentId)
+		//out += color.RGB(seg.Pix[i], seg.Pix[i+1], seg.Pix[i+2], true).Sprintf(" ")
+	}
 }
 
 func (a *Application) HandleConnected(wsconn *websocket.Conn) {
@@ -360,11 +267,44 @@ func (a *Application) HandleConnected(wsconn *websocket.Conn) {
 	}
 }
 
-func (a *Application) ProcessEvents(evts []event.Event) {
-	//for _, e := range evts {
-	//	switch e.EventWithType {
-	//	case event.SetLeds:
-	//		a.HandleSetLedsEvent(e)
-	//	}
-	//}
+func (a *Application) ProcessEvents(events ...event.Event) {
+	for _, e := range events {
+		//fmt.Printf("<- %s\n", e)
+
+		switch e := e.(type) {
+		case event.UpdateEvent:
+			a.HandleUpdateEvent(e)
+		case event.SetLedsEvent:
+			a.HandleSetLedsEvent(e)
+		default:
+			fmt.Println("unknown event", e)
+		}
+	}
+
+	if a.ws == nil {
+		return
+	}
+
+	a.mux.Lock()
+	if a.rendering {
+		a.mux.Unlock()
+
+		return
+	}
+
+	a.rendering = true
+	a.mux.Unlock()
+
+	go func() {
+		defer func() {
+			a.mux.Lock()
+			a.rendering = false
+			a.mux.Unlock()
+		}()
+
+		err := a.ws.Render()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
 }

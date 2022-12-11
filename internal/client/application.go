@@ -105,16 +105,27 @@ func New(opts ...Option) (*Application, error) {
 	}
 
 	go func() {
-		for b := range a.ctl.Events() {
+		for events := range a.ctl.Events() {
 			a.connMux.Lock()
 			conn := a.conn
 			a.connMux.Unlock()
 
+			//for _, e := range events {
+			//	fmt.Printf("-> %s\n", e)
+			//}
+
+			b, err := json.Marshal(events)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
 			if conn == nil {
+				fmt.Println("no connection")
 				continue
 			}
 
-			err := conn.WriteMessage(websocket.TextMessage, b)
+			err = conn.WriteMessage(websocket.TextMessage, b)
 			if err != nil {
 				a.connMux.Lock()
 				a.conn = nil
@@ -163,6 +174,7 @@ func (a *Application) Start() error {
 					for {
 						typ, b, err := conn.ReadMessage()
 						if err != nil {
+							fmt.Println("error during read", err)
 							a.connMux.Lock()
 							a.conn = nil
 							a.connMux.Unlock()
@@ -174,14 +186,13 @@ func (a *Application) Start() error {
 							continue
 						}
 
-						var e event.Event
-						err = json.Unmarshal(b, &e)
+						events, err := event.Parse(b)
 						if err != nil {
-							fmt.Println("invalid event format")
+							fmt.Println(err)
 							continue
 						}
 
-						a.Handle(e.Type, b)
+						a.ProcessEvents(events...)
 					}
 
 					//err = a.reload()
@@ -253,4 +264,10 @@ func (a *Application) Handle(t event.Type, b []byte) {
 	case event.Connected:
 
 	}
+}
+
+func (a *Application) ProcessEvents(events ...event.Event) {
+	//for _, e := range events {
+	//	fmt.Printf("<- %s\n", e)
+	//}
 }

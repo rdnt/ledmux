@@ -15,21 +15,21 @@ func validateConfig(c config.Config) error {
 }
 
 func (a *Application) applyConfig(c config.Config) (err error) {
-	leds := 0
+	offset := 0
 	segs := []Segment{}
 
 	for _, seg := range c.Segments {
 		segs = append(segs, Segment{
 			id:    seg.Id,
-			leds:  leds,
-			start: leds,
-			end:   leds + seg.Leds,
+			leds:  seg.Leds,
+			start: offset,
+			end:   offset + seg.Leds,
 		})
 
-		leds += seg.Leds
+		offset += seg.Leds
 	}
 
-	a.leds = leds
+	a.leds = offset
 	a.gpioPin = c.GpioPin
 	a.stripType = c.StripType
 	a.brightness = c.Brightness
