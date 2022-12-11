@@ -411,10 +411,16 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 
 			hue, sat, val := clr.Hsv()
 
-			// easeOutCirc, ref: https://easings.net/#easeOutCirc
-			// should help exaggerate low values in magnitude e.g. high
+			// Easing effect easeOutCirc, ref: https://easings.net/#easeOutCirc
+			// Should help exaggerate low values in magnitude e.g. high
 			// frequency notes
 			val = math.Sqrt(1 - math.Pow(magn-1, 2))
+
+			// Adjust white point
+			min := 0.3
+			max := 1.0
+
+			val = adjustWhitePoint(val, min, max)
 
 			hsv := colorful.Hsv(hue, sat, val)
 
@@ -455,6 +461,10 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 	}
 
 	return nil
+}
+
+func adjustWhitePoint(v float64, min, max float64) float64 {
+	return v*(max-min) + min
 }
 
 func calculateFrequencies(coeffs []complex128) piecewiselinear.Function {
