@@ -14,6 +14,7 @@ import (
 	wca_ami "ledctl3/internal/client/controller/audio/wca-ami"
 	"ledctl3/pkg/sliceewma"
 
+	"github.com/VividCortex/ewma"
 	"github.com/go-ole/go-ole"
 	gcolor "github.com/gookit/color"
 	"github.com/lucasb-eyer/go-colorful"
@@ -48,7 +49,19 @@ type Visualizer struct {
 
 	stats Statistics
 
+	// average holds a sliceewma.MovingAverage for each segment. The decay rate
+	// is affected by windowSize.
 	average map[int]sliceewma.MovingAverage
+
+	// freqMax is a moving average of the maximum magnitude observed between
+	// different audio frames. It helps make smoother transitions between
+	// audio frames that have a frequently changing magnitude of the dominant
+	// frequency. The decay rate is affected by windowSize.
+	freqMax ewma.MovingAverage
+
+	// blackPoint represents the normalization black point as a float value in
+	// the range 0-1
+	blackPoint float64
 }
 
 type Segment struct {
@@ -313,16 +326,23 @@ loop:
 
 			offset += lim
 
-			var peak float32
-			err = ami.GetPeakValue(&peak)
-			if err != nil {
-				continue
-			}
-
 			samples := make([]float64, len(buf)/4)
 			for i := 0; i < len(buf); i += 4 {
 				v := float64(readInt32(buf[i : i+4]))
 				samples = append(samples, v)
+			}
+
+			// Release the buffer as soon as we extract the audio samples
+			err = acc.ReleaseBuffer(availableFrameSize)
+			if err != nil {
+				return errors.WithMessage(err, "failed to release buffer")
+			}
+
+			// TODO: calculate impact of this call
+			var peak float32
+			err = ami.GetPeakValue(&peak)
+			if err != nil {
+				continue
 			}
 
 			// Dispatch the received frame for processing. If the work queue
@@ -330,11 +350,6 @@ loop:
 			v.frames <- frame{
 				samples: samples,
 				peak:    float64(peak),
-			}
-
-			err = acc.ReleaseBuffer(availableFrameSize)
-			if err != nil {
-				return errors.WithMessage(err, "failed to release buffer")
 			}
 		}
 	}
@@ -396,7 +411,7 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 	coeffs = coeffs[:len(coeffs)*2/5]
 
 	// Get a logarithmic piecewise-interpolated projection of the frequencies
-	freqs := calculateFrequencies(coeffs)
+	freqs := v.calculateFrequencies(coeffs)
 
 	segs := make([]visualizer.Segment, 0, len(v.segments))
 
@@ -409,6 +424,8 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 			c := v.gradient.GetInterpolatedColor(magn)
 			clr, _ := colorful.MakeColor(c)
 
+			// Extract HSV color info, we'll use the Value to adjust the
+			// brightness of the colors depending on frequency magnitude.
 			hue, sat, val := clr.Hsv()
 
 			// Easing effect easeOutCirc, ref: https://easings.net/#easeOutCirc
@@ -416,12 +433,10 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 			// frequency notes
 			val = math.Sqrt(1 - math.Pow(magn-1, 2))
 
-			// Adjust white point
-			min := 0.3
-			max := 1.0
+			// Adjust black point
+			val = adjustBlackPoint(val, v.blackPoint)
 
-			val = adjustWhitePoint(val, min, max)
-
+			// Convert the resulting color to RGBA
 			hsv := colorful.Hsv(hue, sat, val)
 
 			r, g, b, a := hsv.RGBA()
@@ -429,9 +444,8 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 			vals = append(vals, float64(r), float64(g), float64(b), float64(a))
 		}
 
-		// Add the colo data to the moving average accumulator for this segment
+		// Add the color data to the moving average accumulator for this segment
 		v.average[seg.Id].Add(vals)
-		// Get the averaged color data
 		vals = v.average[seg.Id].Value()
 
 		// Create the pix slice from the color data
@@ -463,11 +477,11 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 	return nil
 }
 
-func adjustWhitePoint(v float64, min, max float64) float64 {
-	return v*(max-min) + min
+func adjustBlackPoint(v, min float64) float64 {
+	return v*(1-min) + min
 }
 
-func calculateFrequencies(coeffs []complex128) piecewiselinear.Function {
+func (v *Visualizer) calculateFrequencies(coeffs []complex128) piecewiselinear.Function {
 	freqs := make([]float64, len(coeffs))
 	var maxFreq float64
 
@@ -481,9 +495,14 @@ func calculateFrequencies(coeffs []complex128) piecewiselinear.Function {
 		maxFreq = math.Max(maxFreq, val)
 	}
 
+	// Add an entry to the maxFrequency average accumulator
+	v.freqMax.Add(maxFreq)
+	maxFreq = v.freqMax.Value()
+
 	// Normalize frequencies between [0,1] based on maxFreq
 	for i, freq := range freqs {
 		freqs[i] = normalize(freq, 0, maxFreq)
+		freqs[i] = math.Min(freqs[i], 1)
 	}
 
 	// Perform piecewise linear interpolation between frequencies. Also scale
@@ -536,9 +555,11 @@ func New(opts ...Option) (v *Visualizer, err error) {
 		return nil, err
 	}
 
-	v.events = make(chan visualizer.UpdateEvent, len(v.segments)*8)
+	v.events = make(chan visualizer.UpdateEvent, len(v.segments))
 
 	v.average = make(map[int]sliceewma.MovingAverage, len(v.segments))
+
+	v.freqMax = ewma.NewMovingAverage(float64(v.windowSize))
 
 	for _, seg := range v.segments {
 		v.average[seg.Id] = sliceewma.NewMovingAverage(

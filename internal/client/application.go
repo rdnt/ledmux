@@ -25,7 +25,7 @@ type Application struct {
 	StripType  StripType
 	GpioPin    int
 	Brightness int
-	BlackPoint int
+	BlackPoint float64
 	Segments   []Segment
 
 	connMux sync.Mutex
@@ -92,6 +92,7 @@ func New(opts ...Option) (*Application, error) {
 		audio.WithSegments(segs),
 		audio.WithColors(a.Colors...),
 		audio.WithWindowSize(a.WindowSize),
+		audio.WithBlackPoint(a.BlackPoint),
 	)
 
 	a.ctl, err = controller.New(
@@ -110,6 +111,11 @@ func New(opts ...Option) (*Application, error) {
 			conn := a.conn
 			a.connMux.Unlock()
 
+			if conn == nil {
+				fmt.Println("no connection")
+				continue
+			}
+
 			//for _, e := range events {
 			//	fmt.Printf("-> %s\n", e)
 			//}
@@ -118,11 +124,6 @@ func New(opts ...Option) (*Application, error) {
 			if err != nil {
 				fmt.Println(err)
 				return
-			}
-
-			if conn == nil {
-				fmt.Println("no connection")
-				continue
 			}
 
 			err = conn.WriteMessage(websocket.TextMessage, b)
@@ -150,7 +151,7 @@ func (a *Application) Start() error {
 	go func() {
 		for {
 			// try to re-establish connection if lost
-			time.Sleep(1 * time.Second)
+			defer time.Sleep(1 * time.Second)
 
 			a.connMux.Lock()
 			conn := a.conn

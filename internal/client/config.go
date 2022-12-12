@@ -161,6 +161,7 @@ func (a *Application) validateDisplayConfigs(displayConfigs [][]config.Display) 
 
 	return nil
 }
+
 func (a *Application) validateAudioConfig(cfg config.AudioConfig) error {
 	if len(cfg.Colors) < 2 {
 		return errors.New("a minimum of two colors are required")
@@ -175,6 +176,10 @@ func (a *Application) validateAudioConfig(cfg config.AudioConfig) error {
 
 	if cfg.WindowSize < 1 || cfg.WindowSize > 1000 {
 		return errors.New("averaging window must be at least 1 and no more than 1000 frames")
+	}
+
+	if cfg.BlackPoint < 0 || cfg.BlackPoint >= 1 {
+		return errors.New("black point has to be a floating point number in the range [0-1)")
 	}
 
 	return nil
@@ -260,7 +265,7 @@ func (a *Application) applyConfig(c config.Config) (err error) {
 	}
 
 	a.WindowSize = c.Audio.WindowSize
+	a.BlackPoint = c.Audio.BlackPoint
 
-	fmt.Println(a.Colors, a.WindowSize)
 	return nil
 }

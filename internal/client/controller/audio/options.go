@@ -52,3 +52,10 @@ func WithWindowSize(size int) Option {
 		return nil
 	}
 }
+
+func WithBlackPoint(blackPoint float64) Option {
+	return func(v *Visualizer) error {
+		v.blackPoint = blackPoint
+		return nil
+	}
+}
