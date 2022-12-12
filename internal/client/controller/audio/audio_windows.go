@@ -433,6 +433,10 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 			// frequency notes
 			val = math.Sqrt(1 - math.Pow(magn-1, 2))
 
+			// adjust val partially based on peak magnitude
+			val = val * (1 + peak*2)
+			val = math.Min(1, val) // prevent overflow
+
 			// Adjust black point
 			val = adjustBlackPoint(val, v.blackPoint)
 
