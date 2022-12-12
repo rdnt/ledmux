@@ -2,21 +2,21 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"image/color"
 	"sync"
 	"time"
-
-	"github.com/gorilla/websocket"
-	"github.com/lucasb-eyer/go-colorful"
-	"github.com/vmihailenco/msgpack/v5"
 
 	"ledctl3/internal/client/controller"
 	"ledctl3/internal/client/controller/audio"
 	"ledctl3/internal/client/controller/video"
-	"ledctl3/internal/pkg/events"
+	"ledctl3/internal/pkg/event"
+
+	"github.com/gorilla/websocket"
 )
 
-type App struct {
+type Application struct {
 	DefaultMode controller.Mode
 
 	Host       string
@@ -25,7 +25,7 @@ type App struct {
 	StripType  StripType
 	GpioPin    int
 	Brightness int
-	BlackPoint int
+	BlackPoint float64
 	Segments   []Segment
 
 	connMux sync.Mutex
@@ -34,7 +34,7 @@ type App struct {
 	Displays       video.DisplayRepository
 	DisplayConfigs [][]video.DisplayConfig
 
-	Colors     []colorful.Color
+	Colors     []color.Color
 	WindowSize int
 
 	//cfg config.Config
@@ -55,8 +55,8 @@ type Segment struct {
 	Leds int
 }
 
-func New(opts ...Option) (*App, error) {
-	a := &App{}
+func New(opts ...Option) (*Application, error) {
+	a := &Application{}
 
 	for _, opt := range opts {
 		err := opt(a)
@@ -73,7 +73,7 @@ func New(opts ...Option) (*App, error) {
 	displayVisualizer, err := video.New(
 		video.WithLedsCount(a.Leds),
 		video.WithDisplayRepository(a.Displays),
-		video.WithDisplayConfig(a.DisplayConfigs), // TODO @@@@
+		video.WithDisplayConfig(a.DisplayConfigs),
 	)
 	if err != nil {
 		return nil, err
@@ -92,6 +92,7 @@ func New(opts ...Option) (*App, error) {
 		audio.WithSegments(segs),
 		audio.WithColors(a.Colors...),
 		audio.WithWindowSize(a.WindowSize),
+		audio.WithBlackPoint(a.BlackPoint),
 	)
 
 	a.ctl, err = controller.New(
@@ -105,16 +106,27 @@ func New(opts ...Option) (*App, error) {
 	}
 
 	go func() {
-		for b := range a.ctl.Events() {
+		for events := range a.ctl.Events() {
 			a.connMux.Lock()
 			conn := a.conn
 			a.connMux.Unlock()
 
 			if conn == nil {
+				fmt.Println("no connection")
 				continue
 			}
 
-			err := conn.WriteMessage(websocket.BinaryMessage, b)
+			//for _, e := range events {
+			//	fmt.Printf("-> %s\n", e)
+			//}
+
+			b, err := json.Marshal(events)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			err = conn.WriteMessage(websocket.TextMessage, b)
 			if err != nil {
 				a.connMux.Lock()
 				a.conn = nil
@@ -133,13 +145,13 @@ func New(opts ...Option) (*App, error) {
 	return a, nil
 }
 
-func (a *App) Start() error {
+func (a *Application) Start() error {
 	var err error
 
 	go func() {
 		for {
 			// try to re-establish connection if lost
-			time.Sleep(1 * time.Second)
+			defer time.Sleep(1 * time.Second)
 
 			a.connMux.Lock()
 			conn := a.conn
@@ -160,11 +172,35 @@ func (a *App) Start() error {
 					a.conn = conn
 					a.connMux.Unlock()
 
-					err = a.reload()
-					if err != nil {
-						fmt.Println(err)
-						return
+					for {
+						typ, b, err := conn.ReadMessage()
+						if err != nil {
+							fmt.Println("error during read", err)
+							a.connMux.Lock()
+							a.conn = nil
+							a.connMux.Unlock()
+							return
+						}
+
+						if typ != websocket.TextMessage {
+							fmt.Println("invalid message type")
+							continue
+						}
+
+						events, err := event.Parse(b)
+						if err != nil {
+							fmt.Println(err)
+							continue
+						}
+
+						a.ProcessEvents(events...)
 					}
+
+					//err = a.reload()
+					//if err != nil {
+					//	fmt.Println(err)
+					//	return
+					//}
 				}()
 
 			}
@@ -179,40 +215,40 @@ func (a *App) Start() error {
 	return nil
 }
 
-func (a *App) reload() error {
-	segments := []events.SegmentConfig{}
+//func (a *Application) reload() error {
+//	segments := []event.SegmentConfig{}
+//
+//	for _, s := range a.Segments {
+//		segments = append(
+//			segments, event.SegmentConfig{
+//				Id:   s.Id,
+//				Leds: s.Leds,
+//			},
+//		)
+//	}
+//
+//	e := event.NewUpdateEvent(a.Leds, string(a.StripType), a.GpioPin, a.Brightness, segments)
+//
+//	b, err := json.Marshal(e)
+//	if err != nil {
+//		return err
+//	}
+//
+//	a.connMux.Lock()
+//	conn := a.conn
+//	a.connMux.Unlock()
+//
+//	if conn != nil {
+//		err = a.conn.WriteMessage(websocket.TextMessage, b)
+//		if err != nil {
+//			return err
+//		}
+//	}
+//
+//	return nil
+//}
 
-	for _, s := range a.Segments {
-		segments = append(
-			segments, events.SegmentConfig{
-				Id:   s.Id,
-				Leds: s.Leds,
-			},
-		)
-	}
-
-	e := events.NewReloadEvent(a.Leds, string(a.StripType), a.GpioPin, a.Brightness, segments)
-
-	b, err := msgpack.Marshal(e)
-	if err != nil {
-		return err
-	}
-
-	a.connMux.Lock()
-	conn := a.conn
-	a.connMux.Unlock()
-
-	if conn != nil {
-		err = a.conn.WriteMessage(websocket.BinaryMessage, b)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (a *App) Stop() error {
+func (a *Application) Stop() error {
 	a.connMux.Lock()
 	conn := a.conn
 	a.connMux.Unlock()
@@ -222,4 +258,17 @@ func (a *App) Stop() error {
 	}
 
 	return a.ctl.SetMode(controller.Reset)
+}
+
+func (a *Application) Handle(t event.Type, b []byte) {
+	switch t {
+	case event.Connected:
+
+	}
+}
+
+func (a *Application) ProcessEvents(events ...event.Event) {
+	//for _, e := range events {
+	//	fmt.Printf("<- %s\n", e)
+	//}
 }

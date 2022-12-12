@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"image/color"
 
 	"github.com/lucasb-eyer/go-colorful"
 
@@ -57,7 +58,7 @@ var stripTypes = map[string]StripType{
 	"bgr":  BGR,
 }
 
-func (a *App) validateConfig(c config.Config) error {
+func (a *Application) validateConfig(c config.Config) error {
 	_, ok := controller.Modes[c.DefaultMode]
 	if !ok {
 		return fmt.Errorf("invalid default mode")
@@ -91,7 +92,7 @@ func (a *App) validateConfig(c config.Config) error {
 	return nil
 }
 
-func (a *App) validateSegments(segs []config.Segment) error {
+func (a *Application) validateSegments(segs []config.Segment) error {
 	for _, seg := range segs {
 		if seg.Leds < 1 || seg.Leds > 1024 {
 			return fmt.Errorf("invalid LED count for segment %d", seg.Id)
@@ -101,7 +102,7 @@ func (a *App) validateSegments(segs []config.Segment) error {
 	return nil
 }
 
-func (a *App) validateServer(srv config.Server) error {
+func (a *Application) validateServer(srv config.Server) error {
 	//ip := net.ParseIP(srv.Host)
 	//if ip == nil {
 	//	return fmt.Errorf("invalid server IP")
@@ -131,7 +132,7 @@ func (a *App) validateServer(srv config.Server) error {
 	return nil
 }
 
-func (a *App) validateDisplayConfigs(displayConfigs [][]config.Display) error {
+func (a *Application) validateDisplayConfigs(displayConfigs [][]config.Display) error {
 	for _, cfg := range displayConfigs {
 		for i, d := range cfg {
 			if d.Width < 1 || d.Width > 7680 {
@@ -160,7 +161,8 @@ func (a *App) validateDisplayConfigs(displayConfigs [][]config.Display) error {
 
 	return nil
 }
-func (a *App) validateAudioConfig(cfg config.AudioConfig) error {
+
+func (a *Application) validateAudioConfig(cfg config.AudioConfig) error {
 	if len(cfg.Colors) < 2 {
 		return errors.New("a minimum of two colors are required")
 	}
@@ -176,10 +178,14 @@ func (a *App) validateAudioConfig(cfg config.AudioConfig) error {
 		return errors.New("averaging window must be at least 1 and no more than 1000 frames")
 	}
 
+	if cfg.BlackPoint < 0 || cfg.BlackPoint >= 1 {
+		return errors.New("black point has to be a floating point number in the range [0-1)")
+	}
+
 	return nil
 }
 
-func (a *App) applyConfig(c config.Config) (err error) {
+func (a *Application) applyConfig(c config.Config) (err error) {
 	switch CapturerType(c.CaptureType) {
 	case DXGI:
 		a.Displays, err = dxgi.New()
@@ -248,7 +254,7 @@ func (a *App) applyConfig(c config.Config) (err error) {
 		a.DisplayConfigs = append(a.DisplayConfigs, parsedCfg)
 	}
 
-	a.Colors = []colorful.Color{}
+	a.Colors = []color.Color{}
 	for _, hex := range c.Audio.Colors {
 		clr, err := colorful.Hex(hex)
 		if err != nil {
@@ -259,7 +265,7 @@ func (a *App) applyConfig(c config.Config) (err error) {
 	}
 
 	a.WindowSize = c.Audio.WindowSize
+	a.BlackPoint = c.Audio.BlackPoint
 
-	fmt.Println(a.Colors, a.WindowSize)
 	return nil
 }

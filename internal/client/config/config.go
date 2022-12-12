@@ -22,6 +22,7 @@ type Config struct {
 type AudioConfig struct {
 	Colors     []string `yaml:"colors" json:"colors"`
 	WindowSize int      `yaml:"windowSize" json:"windowSize"`
+	BlackPoint float64  `yaml:"blackPoint" json:"blackPoint"`
 }
 
 type Server struct {

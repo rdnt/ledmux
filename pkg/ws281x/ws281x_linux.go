@@ -162,9 +162,9 @@ func (ws *Engine) Render() error {
 }
 
 // SetLedColor changes the color of the led in the specified index
-func (ws *Engine) SetLedColor(index int, r uint8, g uint8, b uint8) error {
+func (ws *Engine) SetLedColor(index int, r uint8, g uint8, b uint8, a uint8) error {
 	// WRGB
-	color := uint32(0xff)<<24 | uint32(r)<<16 | uint32(g)<<8 | uint32(b)
+	color := uint32(a)<<24 | uint32(r)<<16 | uint32(g)<<8 | uint32(b)
 
 	ws.mux.Lock()
 

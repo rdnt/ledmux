@@ -5,18 +5,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/VividCortex/ewma"
-	"github.com/vmihailenco/msgpack/v5"
-
 	"ledctl3/internal/client/visualizer"
-	"ledctl3/internal/pkg/events"
+	"ledctl3/internal/pkg/event"
+
+	"github.com/VividCortex/ewma"
 )
 
 type Controller struct {
 	leds       int
 	Mode       Mode
 	visualizer visualizer.Visualizer
-	events     chan []byte
+	events     chan []event.Event
 
 	displayVisualizer visualizer.Visualizer
 	audioVisualizer   visualizer.Visualizer
@@ -57,7 +56,7 @@ func New(opts ...Option) (*Controller, error) {
 		}
 	}
 
-	s.events = make(chan []byte, s.segmentCount)
+	s.events = make(chan []event.Event)
 
 	return s, nil
 }
@@ -66,7 +65,7 @@ func (ctl *Controller) Start() error {
 	return nil
 }
 
-func (ctl *Controller) Events() chan []byte {
+func (ctl *Controller) Events() chan []event.Event {
 	return ctl.events
 }
 
@@ -133,23 +132,17 @@ func (ctl *Controller) SetMode(mode Mode) error {
 				ctl.timing.process.Add(float64(evt.Duration.Nanoseconds()))
 				ctl.timingMux.Unlock()
 
-				segs := []events.Segment{}
+				events := []event.Event{}
 
 				for _, seg := range evt.Segments {
-					segs = append(segs, events.Segment{
-						Id:  seg.Id,
-						Pix: seg.Pix,
+					events = append(events, event.SetLedsEvent{
+						Event: event.SetLeds,
+						Id:    seg.Id,
+						Pix:   seg.Pix,
 					})
 				}
 
-				e := events.NewAmbilightEvent(segs)
-
-				b, err := msgpack.Marshal(e)
-				if err != nil {
-					panic(err)
-				}
-
-				ctl.events <- b
+				ctl.events <- events
 			}
 		}()
 	}
