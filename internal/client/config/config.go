@@ -11,26 +11,27 @@ import (
 type Config struct {
 	name        string
 	format      string
-	DefaultMode string      `yaml:"defaultMode" json:"defaultMode"`
-	CaptureType string      `yaml:"captureType" json:"captureType"`
-	Server      Server      `yaml:"server" json:"server"`
-	Displays    [][]Display `yaml:"displays" json:"displays"`
-	Audio       AudioConfig `yaml:"audio" json:"audio"`
-	Segments    []Segment   `yaml:"segments" json:"segments"`
+	DefaultMode string        `yaml:"defaultMode" json:"defaultMode"`
+	CaptureType string        `yaml:"captureType" json:"captureType"`
+	Server      Server        `yaml:"server" json:"server"`
+	Displays    [][]Display   `yaml:"displays" json:"displays"`
+	Audio       Audio         `yaml:"audio" json:"audio"`
+	Segments    []Segment     `yaml:"segments" json:"segments"`
+	Calibration []Calibration `yaml:"calibration" json:"calibration"`
 }
 
-type AudioConfig struct {
-	Colors     ColorsConfig `yaml:"colors" json:"colors"`
-	WindowSize int          `yaml:"windowSize" json:"windowSize"`
-	BlackPoint float64      `yaml:"blackPoint" json:"blackPoint"`
+type Audio struct {
+	Colors     Colors  `yaml:"colors" json:"colors"`
+	WindowSize int     `yaml:"windowSize" json:"windowSize"`
+	BlackPoint float64 `yaml:"blackPoint" json:"blackPoint"`
 }
 
-type ColorsConfig struct {
-	Profiles []ColorProfile `yaml:"profiles" json:"profiles"`
-	Selected string         `yaml:"selected" json:"selected"`
+type Colors struct {
+	Profiles []Profile `yaml:"profiles" json:"profiles"`
+	Selected string    `yaml:"selected" json:"selected"`
 }
 
-type ColorProfile struct {
+type Profile struct {
 	Name   string   `yaml:"name" json:"name"`
 	Colors []string `yaml:"colors" json:"colors"`
 }
@@ -68,6 +69,14 @@ type Vector2 struct {
 type Segment struct {
 	Id   int `yaml:"id" json:"id"`
 	Leds int `yaml:"leds" json:"leds"`
+}
+
+type Calibration struct {
+	Id    int     `yaml:"id" json:"id"`
+	Red   float64 `yaml:"red" json:"red"`
+	Green float64 `yaml:"green" json:"green"`
+	Blue  float64 `yaml:"blue" json:"blue"`
+	White float64 `yaml:"white" json:"white"`
 }
 
 func (c *Config) Save() error {
@@ -175,9 +184,9 @@ func createDefault() (*Config, error) {
 				},
 			},
 		},
-		Audio: AudioConfig{
-			Colors: ColorsConfig{
-				Profiles: []ColorProfile{
+		Audio: Audio{
+			Colors: Colors{
+				Profiles: []Profile{
 					{
 						Name: "my-profile",
 						Colors: []string{
@@ -192,6 +201,15 @@ func createDefault() (*Config, error) {
 			},
 			WindowSize: 40,
 			BlackPoint: 0.2,
+		},
+		Calibration: []Calibration{
+			{
+				Id:    0,
+				Red:   1,
+				Green: 1,
+				Blue:  1,
+				White: 1,
+			},
 		},
 	}
 

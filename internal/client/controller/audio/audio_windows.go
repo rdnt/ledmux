@@ -417,6 +417,7 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 
 	for _, seg := range v.segments {
 		vals := make([]float64, 0, seg.Leds*4)
+		colors := make([]color.Color, 0, seg.Leds)
 
 		for i := 0; i < seg.Leds; i++ {
 			magn := freqs.At(float64(i) / float64(seg.Leds-1))
@@ -446,6 +447,7 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 			r, g, b, a := hsv.RGBA()
 
 			vals = append(vals, float64(r), float64(g), float64(b), float64(a))
+			colors = append(colors, hsv)
 		}
 
 		// Add the color data to the moving average accumulator for this segment

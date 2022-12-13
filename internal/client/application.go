@@ -46,6 +46,8 @@ type Application struct {
 	ctl           *controller.Controller
 	ServerAddress string
 
+	Calibration map[int]Calibration
+
 	//displayVisualizer visualizer.Visualizer
 	//audioVisualizer   visualizer.Visualizer
 }
@@ -53,6 +55,13 @@ type Application struct {
 type Segment struct {
 	Id   int
 	Leds int
+}
+
+type Calibration struct {
+	Red   float64
+	Green float64
+	Blue  float64
+	White float64
 }
 
 func New(opts ...Option) (*Application, error) {

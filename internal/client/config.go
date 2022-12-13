@@ -90,6 +90,11 @@ func (a *Application) validateConfig(c config.Config) error {
 		return err
 	}
 
+	err = a.validateCalibration(c.Calibration)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -163,7 +168,7 @@ func (a *Application) validateDisplayConfigs(displayConfigs [][]config.Display) 
 	return nil
 }
 
-func (a *Application) validateAudioConfig(cfg config.AudioConfig) error {
+func (a *Application) validateAudioConfig(cfg config.Audio) error {
 	if len(cfg.Colors.Profiles) == 0 {
 		return errors.New("a color profile is required")
 	}
@@ -211,6 +216,21 @@ func (a *Application) validateAudioConfig(cfg config.AudioConfig) error {
 
 	if cfg.BlackPoint < 0 || cfg.BlackPoint >= 1 {
 		return errors.New("black point has to be a floating point number in the range [0-1)")
+	}
+
+	return nil
+}
+
+func (a *Application) validateCalibration(calib []config.Calibration) error {
+	calibs := map[int]bool{}
+
+	for _, c := range calib {
+		_, ok := calibs[c.Id]
+		if ok {
+			return errors.New("duplicate calibration found")
+		}
+
+		calibs[c.Id] = true
 	}
 
 	return nil
@@ -304,6 +324,21 @@ func (a *Application) applyConfig(c config.Config) (err error) {
 
 	a.WindowSize = c.Audio.WindowSize
 	a.BlackPoint = c.Audio.BlackPoint
+
+	a.Calibration = map[int]Calibration{}
+	
+	for _, c := range c.Calibration {
+		if c.Id > a.Leds {
+			return errors.New("calibration index out of range")
+		}
+
+		a.Calibration[c.Id] = Calibration{
+			Red:   c.Red,
+			Green: c.Green,
+			Blue:  c.Blue,
+			White: c.White,
+		}
+	}
 
 	return nil
 }
