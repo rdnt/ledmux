@@ -20,9 +20,19 @@ type Config struct {
 }
 
 type AudioConfig struct {
-	Colors     []string `yaml:"colors" json:"colors"`
-	WindowSize int      `yaml:"windowSize" json:"windowSize"`
-	BlackPoint float64  `yaml:"blackPoint" json:"blackPoint"`
+	Colors     ColorsConfig `yaml:"colors" json:"colors"`
+	WindowSize int          `yaml:"windowSize" json:"windowSize"`
+	BlackPoint float64      `yaml:"blackPoint" json:"blackPoint"`
+}
+
+type ColorsConfig struct {
+	Profiles []ColorProfile `yaml:"profiles" json:"profiles"`
+	Selected string         `yaml:"selected" json:"selected"`
+}
+
+type ColorProfile struct {
+	Name   string   `yaml:"name" json:"name"`
+	Colors []string `yaml:"colors" json:"colors"`
 }
 
 type Server struct {
@@ -166,13 +176,22 @@ func createDefault() (*Config, error) {
 			},
 		},
 		Audio: AudioConfig{
-			Colors: []string{
-				"#355c7d",
-				"#725a7c",
-				"#c66c86",
-				"#ff7582",
+			Colors: ColorsConfig{
+				Profiles: []ColorProfile{
+					{
+						Name: "my-profile",
+						Colors: []string{
+							"#355c7d",
+							"#725a7c",
+							"#c66c86",
+							"#ff7582",
+						},
+					},
+				},
+				Selected: "my-profile",
 			},
-			WindowSize: 80,
+			WindowSize: 40,
+			BlackPoint: 0.2,
 		},
 	}
 

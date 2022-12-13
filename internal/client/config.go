@@ -6,6 +6,7 @@ import (
 	"image/color"
 
 	"github.com/lucasb-eyer/go-colorful"
+	"golang.org/x/exp/slices"
 
 	"ledctl3/internal/client/config"
 	"ledctl3/internal/client/controller"
@@ -163,15 +164,45 @@ func (a *Application) validateDisplayConfigs(displayConfigs [][]config.Display) 
 }
 
 func (a *Application) validateAudioConfig(cfg config.AudioConfig) error {
-	if len(cfg.Colors) < 2 {
-		return errors.New("a minimum of two colors are required")
+	if len(cfg.Colors.Profiles) == 0 {
+		return errors.New("a color profile is required")
 	}
 
-	for _, hex := range cfg.Colors {
-		_, err := colorful.Hex(hex)
-		if err != nil {
-			return err
+	if cfg.Colors.Selected == "" {
+		return errors.New("the selected color profile is invalid")
+	}
+
+	var found bool
+
+	names := []string{}
+	for _, prof := range cfg.Colors.Profiles {
+		if prof.Name == "" {
+			return errors.New("color profile name is required")
 		}
+
+		if slices.Contains(names, prof.Name) {
+			return errors.New("duplicate profile name")
+		}
+		names = append(names, prof.Name)
+
+		if prof.Name == cfg.Colors.Selected {
+			found = true
+		}
+
+		if len(prof.Colors) < 2 {
+			return errors.New("a color profile requires a minimum of two colors")
+		}
+
+		for _, hex := range prof.Colors {
+			_, err := colorful.Hex(hex)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if !found {
+		return errors.New("the selected profile doesn't exist")
 	}
 
 	if cfg.WindowSize < 1 || cfg.WindowSize > 1000 {
@@ -255,13 +286,20 @@ func (a *Application) applyConfig(c config.Config) (err error) {
 	}
 
 	a.Colors = []color.Color{}
-	for _, hex := range c.Audio.Colors {
-		clr, err := colorful.Hex(hex)
-		if err != nil {
-			return err
-		}
 
-		a.Colors = append(a.Colors, clr)
+	for _, prof := range c.Audio.Colors.Profiles {
+		if prof.Name == c.Audio.Colors.Selected {
+			for _, hex := range prof.Colors {
+				clr, err := colorful.Hex(hex)
+				if err != nil {
+					return err
+				}
+
+				a.Colors = append(a.Colors, clr)
+			}
+
+			break
+		}
 	}
 
 	a.WindowSize = c.Audio.WindowSize

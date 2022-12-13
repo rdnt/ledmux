@@ -475,7 +475,7 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 
 	v.events <- visualizer.UpdateEvent{
 		Segments: segs,
-		Duration: time.Since(now),
+		Latency:  time.Since(now),
 	}
 
 	return nil

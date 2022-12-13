@@ -129,7 +129,7 @@ func (ctl *Controller) SetMode(mode Mode) error {
 		go func() {
 			for evt := range ctl.visualizer.Events() {
 				ctl.timingMux.Lock()
-				ctl.timing.process.Add(float64(evt.Duration.Nanoseconds()))
+				ctl.timing.process.Add(float64(evt.Latency.Nanoseconds()))
 				ctl.timingMux.Unlock()
 
 				events := []event.Event{}
