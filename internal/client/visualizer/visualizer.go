@@ -15,7 +15,7 @@ type Visualizer interface {
 // UpdateEvent is emitted whenever one or more segments need to be updated.
 type UpdateEvent struct {
 	Segments []Segment
-	Duration time.Duration
+	Latency  time.Duration
 }
 
 // Segment is an LED strip segment.

@@ -239,7 +239,7 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 				Pix: pix,
 			},
 		},
-		Duration: time.Since(now),
+		Latency: time.Since(now),
 	}
 }
 
