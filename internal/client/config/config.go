@@ -79,7 +79,7 @@ type Calibration struct {
 	White float64 `yaml:"white" json:"white"`
 }
 
-func (c *Config) Save() error {
+func (c Config) Save() error {
 	var b []byte
 
 	switch c.format {
@@ -109,7 +109,7 @@ func (c *Config) Save() error {
 	return nil
 }
 
-func Load() (*Config, error) {
+func Load() (Config, error) {
 	validCfgs := map[string]string{
 		"ledctl.json": "json",
 		"ledctl.yaml": "yaml",
@@ -120,7 +120,7 @@ func Load() (*Config, error) {
 		if _, err := os.Stat(name); err == nil {
 			b, err := os.ReadFile(name)
 			if err != nil {
-				return nil, err
+				return Config{}, err
 			}
 
 			var c Config
@@ -128,13 +128,13 @@ func Load() (*Config, error) {
 			switch format {
 			case "json":
 				if err := json.Unmarshal(b, &c); err != nil {
-					return nil, err
+					return Config{}, err
 				}
 
 				c.format = "json"
 			case "yaml":
 				if err := yaml.Unmarshal(b, &c); err != nil {
-					return nil, err
+					return Config{}, err
 				}
 
 				c.format = "yaml"
@@ -142,14 +142,14 @@ func Load() (*Config, error) {
 
 			c.name = name
 
-			return &c, nil
+			return c, nil
 		}
 	}
 
 	return createDefault()
 }
 
-func createDefault() (*Config, error) {
+func createDefault() (Config, error) {
 	c := Config{
 		DefaultMode: "video",
 		CaptureType: "bitblt",
@@ -215,13 +215,13 @@ func createDefault() (*Config, error) {
 
 	b, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
 
 	err = os.WriteFile("ledctl.json", b, 0644)
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
 
-	return &c, nil
+	return c, nil
 }

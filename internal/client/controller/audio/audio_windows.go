@@ -398,7 +398,38 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 
 	if peak < 1e-9 {
 		// skip calculations, set all frequencies to 0
-		// TODO: Send reset event
+
+		segs := make([]visualizer.Segment, 0, len(v.segments))
+
+		for _, seg := range v.segments {
+			colors := make([]color.Color, seg.Leds)
+			for i := 0; i < seg.Leds; i++ {
+				colors[i] = color.RGBA{}
+			}
+
+			v.average[seg.Id].Add(colors)
+			colors = v.average[seg.Id].Current()
+
+			if seg.Id == 0 {
+				out := ""
+				for _, c := range colors {
+					r, g, b, _ := c.RGBA()
+					out += gcolor.RGB(uint8(r>>8), uint8(g>>8), uint8(b>>8), true).Sprintf(" ")
+				}
+				fmt.Println(out)
+			}
+
+			segs = append(segs, visualizer.Segment{
+				Id:  seg.Id,
+				Pix: colors,
+			})
+		}
+
+		v.events <- visualizer.UpdateEvent{
+			Segments: segs,
+			Latency:  time.Since(now),
+		}
+
 		return nil
 	}
 
@@ -435,7 +466,7 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 			val = math.Sqrt(1 - math.Pow(magn-1, 2))
 
 			// adjust val partially based on peak magnitude
-			val = val * (1 + peak*2)
+			val = val * (1 + peak)
 			val = math.Min(1, val) // prevent overflow
 
 			// Adjust black point
@@ -577,7 +608,7 @@ func New(opts ...Option) (v *Visualizer, err error) {
 
 	v.average = make(map[int]pixavg.Average, len(v.segments))
 
-	v.freqMax = ewma.NewMovingAverage(float64(v.windowSize))
+	v.freqMax = ewma.NewMovingAverage(float64(v.windowSize) * 8)
 
 	for _, seg := range v.segments {
 		prev := make([]color.Color, seg.Leds)

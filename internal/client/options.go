@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"ledctl3/internal/client/config"
@@ -17,18 +18,17 @@ type Option func(*Application) error
 //	}
 //}
 
-func WithConfig(cfg *config.Config) Option {
+func WithConfig(cfg config.Config) Option {
 	return func(a *Application) error {
-		if cfg == nil {
-			return fmt.Errorf("invalid config")
-		}
+		b, _ := json.Marshal(cfg)
+		fmt.Println(string(b))
 
-		err := a.validateConfig(*cfg)
+		err := a.validateConfig(cfg)
 		if err != nil {
 			return err
 		}
 
-		err = a.applyConfig(*cfg)
+		err = a.applyConfig(cfg)
 		if err != nil {
 			return err
 		}
