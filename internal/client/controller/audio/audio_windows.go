@@ -12,7 +12,7 @@ import (
 	"unsafe"
 
 	wca_ami "ledctl3/internal/client/controller/audio/wca-ami"
-	"ledctl3/pkg/sliceewma"
+	"ledctl3/pkg/pixavg"
 
 	"github.com/VividCortex/ewma"
 	"github.com/go-ole/go-ole"
@@ -49,9 +49,9 @@ type Visualizer struct {
 
 	stats Statistics
 
-	// average holds a sliceewma.MovingAverage for each segment. The decay rate
+	// average holds a pixavg.Average for each segment. The decay rate
 	// is affected by windowSize.
-	average map[int]sliceewma.MovingAverage
+	average map[int]pixavg.Average
 
 	// freqMax is a moving average of the maximum magnitude observed between
 	// different audio frames. It helps make smoother transitions between
@@ -451,27 +451,37 @@ func (v *Visualizer) processFrame(samples []float64, peak float64) error {
 		}
 
 		// Add the color data to the moving average accumulator for this segment
-		v.average[seg.Id].Add(vals)
-		vals = v.average[seg.Id].Value()
+		v.average[seg.Id].Add(colors)
+		colors = v.average[seg.Id].Current()
 
 		// Create the pix slice from the color data
-		pix := make([]uint8, len(vals))
-		for j := 0; j < len(vals); j++ {
-			pix[j] = uint8(uint16(vals[j]) >> 8)
-		}
+		//pix := make([]uint8, len(colors))
+		//for j := 0; j < len(vals); j++ {
+		//	pix[j] = uint8(uint16(vals[j]) >> 8)
+		//}
+
+		//pix := make([]color.Color, len(colors)*4)
+		//
+		//for _, c := range colors {
+		//	r, g, b, a := c.RGBA()
+		//	pix = append(pix,
+		//		uint8(r>>8), uint8(g>>8), uint8(b>>8), uint8(a>>8),
+		//	)
+		//}
 
 		// DEBUG
 		if seg.Id == 0 {
 			out := ""
-			for i := 0; i < len(pix); i += 4 {
-				out += gcolor.RGB(pix[i], pix[i+1], pix[i+2], true).Sprintf(" ")
+			for _, c := range colors {
+				r, g, b, _ := c.RGBA()
+				out += gcolor.RGB(uint8(r>>8), uint8(g>>8), uint8(b>>8), true).Sprintf(" ")
 			}
 			fmt.Println(out)
 		}
 
 		segs = append(segs, visualizer.Segment{
 			Id:  seg.Id,
-			Pix: pix,
+			Pix: colors,
 		})
 	}
 
@@ -563,15 +573,18 @@ func New(opts ...Option) (v *Visualizer, err error) {
 
 	v.events = make(chan visualizer.UpdateEvent, len(v.segments))
 
-	v.average = make(map[int]sliceewma.MovingAverage, len(v.segments))
+	//v.average = make(map[int]sliceewma.MovingAverage, len(v.segments))
+
+	v.average = make(map[int]pixavg.Average, len(v.segments))
 
 	v.freqMax = ewma.NewMovingAverage(float64(v.windowSize))
 
 	for _, seg := range v.segments {
-		v.average[seg.Id] = sliceewma.NewMovingAverage(
-			seg.Leds*4,
-			float64(v.windowSize),
-		)
+		prev := make([]color.Color, seg.Leds)
+		for i := 0; i < len(prev); i++ {
+			prev[i] = color.RGBA{}
+		}
+		v.average[seg.Id] = pixavg.New(v.windowSize, prev, 2)
 	}
 
 	return v, nil

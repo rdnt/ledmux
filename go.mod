@@ -18,12 +18,13 @@ require (
 	github.com/rpi-ws281x/rpi-ws281x-go v1.0.8
 	github.com/sgreben/piecewiselinear v1.1.1
 	github.com/stretchr/testify v1.7.0
-	golang.org/x/exp v0.0.0-20221126150942-6ab00d035af9
+	golang.org/x/exp v0.0.0-20221212164502-fae10dda9338
 	gonum.org/v1/gonum v0.11.0
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 )
 
 require (
+	github.com/MicahParks/go-ma v0.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gen2brain/shm v0.0.0-20210511105953-083dbc7d9d83 // indirect
 	github.com/getlantern/context v0.0.0-20190109183933-c447772a6520 // indirect

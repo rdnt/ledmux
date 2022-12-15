@@ -135,10 +135,16 @@ func (ctl *Controller) SetMode(mode Mode) error {
 				events := []event.Event{}
 
 				for _, seg := range evt.Segments {
+					pix := make([]uint8, 0, len(seg.Pix)*4)
+					for _, c := range seg.Pix {
+						r, g, b, a := c.RGBA()
+						pix = append(pix, uint8(r>>8), uint8(g>>8), uint8(b>>8), uint8(a>>8))
+					}
+
 					events = append(events, event.SetLedsEvent{
 						Event: event.SetLeds,
 						Id:    seg.Id,
-						Pix:   seg.Pix,
+						Pix:   pix,
 					})
 				}
 
