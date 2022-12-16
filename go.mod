@@ -24,7 +24,6 @@ require (
 )
 
 require (
-	github.com/MicahParks/go-ma v0.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gen2brain/shm v0.0.0-20210511105953-083dbc7d9d83 // indirect
 	github.com/getlantern/context v0.0.0-20190109183933-c447772a6520 // indirect
