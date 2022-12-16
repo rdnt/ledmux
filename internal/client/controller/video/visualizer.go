@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"image/color"
 	"sync"
 	"time"
 
@@ -232,11 +233,21 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 	pix = averagePix(pix, cfg.Leds)
 	pix = adjustWhitePoint(pix, 0, 256)
 
+	colors := make([]color.Color, len(pix)/4)
+	for i := 0; i < len(pix); i += 4 {
+		colors[i/4] = color.RGBA{
+			R: pix[i],
+			G: pix[i+1],
+			B: pix[i+2],
+			A: pix[i+3],
+		}
+	}
+
 	v.events <- visualizer.UpdateEvent{
 		Segments: []visualizer.Segment{
 			{
 				Id:  cfg.SegmentId,
-				Pix: pix,
+				Pix: colors,
 			},
 		},
 		Latency: time.Since(now),

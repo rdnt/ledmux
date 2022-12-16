@@ -15,22 +15,22 @@ type Config struct {
 	CaptureType string      `yaml:"captureType" json:"captureType"`
 	Server      Server      `yaml:"server" json:"server"`
 	Displays    [][]Display `yaml:"displays" json:"displays"`
-	Audio       AudioConfig `yaml:"audio" json:"audio"`
+	Audio       Audio       `yaml:"audio" json:"audio"`
 	Segments    []Segment   `yaml:"segments" json:"segments"`
 }
 
-type AudioConfig struct {
-	Colors     ColorsConfig `yaml:"colors" json:"colors"`
-	WindowSize int          `yaml:"windowSize" json:"windowSize"`
-	BlackPoint float64      `yaml:"blackPoint" json:"blackPoint"`
+type Audio struct {
+	Colors     Colors  `yaml:"colors" json:"colors"`
+	WindowSize int     `yaml:"windowSize" json:"windowSize"`
+	BlackPoint float64 `yaml:"blackPoint" json:"blackPoint"`
 }
 
-type ColorsConfig struct {
-	Profiles []ColorProfile `yaml:"profiles" json:"profiles"`
-	Selected string         `yaml:"selected" json:"selected"`
+type Colors struct {
+	Profiles []Profile `yaml:"profiles" json:"profiles"`
+	Selected string    `yaml:"selected" json:"selected"`
 }
 
-type ColorProfile struct {
+type Profile struct {
 	Name   string   `yaml:"name" json:"name"`
 	Colors []string `yaml:"colors" json:"colors"`
 }
@@ -70,7 +70,7 @@ type Segment struct {
 	Leds int `yaml:"leds" json:"leds"`
 }
 
-func (c *Config) Save() error {
+func (c Config) Save() error {
 	var b []byte
 
 	switch c.format {
@@ -100,7 +100,7 @@ func (c *Config) Save() error {
 	return nil
 }
 
-func Load() (*Config, error) {
+func Load() (Config, error) {
 	validCfgs := map[string]string{
 		"ledctl.json": "json",
 		"ledctl.yaml": "yaml",
@@ -111,7 +111,7 @@ func Load() (*Config, error) {
 		if _, err := os.Stat(name); err == nil {
 			b, err := os.ReadFile(name)
 			if err != nil {
-				return nil, err
+				return Config{}, err
 			}
 
 			var c Config
@@ -119,13 +119,13 @@ func Load() (*Config, error) {
 			switch format {
 			case "json":
 				if err := json.Unmarshal(b, &c); err != nil {
-					return nil, err
+					return Config{}, err
 				}
 
 				c.format = "json"
 			case "yaml":
 				if err := yaml.Unmarshal(b, &c); err != nil {
-					return nil, err
+					return Config{}, err
 				}
 
 				c.format = "yaml"
@@ -133,14 +133,14 @@ func Load() (*Config, error) {
 
 			c.name = name
 
-			return &c, nil
+			return c, nil
 		}
 	}
 
 	return createDefault()
 }
 
-func createDefault() (*Config, error) {
+func createDefault() (Config, error) {
 	c := Config{
 		DefaultMode: "video",
 		CaptureType: "bitblt",
@@ -175,9 +175,9 @@ func createDefault() (*Config, error) {
 				},
 			},
 		},
-		Audio: AudioConfig{
-			Colors: ColorsConfig{
-				Profiles: []ColorProfile{
+		Audio: Audio{
+			Colors: Colors{
+				Profiles: []Profile{
 					{
 						Name: "my-profile",
 						Colors: []string{
@@ -197,13 +197,13 @@ func createDefault() (*Config, error) {
 
 	b, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
 
 	err = os.WriteFile("ledctl.json", b, 0644)
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
 
-	return &c, nil
+	return c, nil
 }

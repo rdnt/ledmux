@@ -116,6 +116,8 @@ func New(opts ...Option) (*Application, error) {
 				continue
 			}
 
+			//fmt.Println(a.ctl.Statistics().AverageProcessingTime)
+
 			//for _, e := range events {
 			//	fmt.Printf("-> %s\n", e)
 			//}

@@ -120,6 +120,10 @@ func FromJSON(typ Type, b []byte) (Event, error) {
 		var e SetLedsEvent
 		err := json.Unmarshal(b, &e)
 		return e, err
+	case Connected:
+		var e ConnectedEvent
+		err := json.Unmarshal(b, &e)
+		return e, err
 	default:
 		return nil, errors.New("invalid type")
 	}

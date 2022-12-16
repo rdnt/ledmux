@@ -163,7 +163,7 @@ func (a *Application) validateDisplayConfigs(displayConfigs [][]config.Display) 
 	return nil
 }
 
-func (a *Application) validateAudioConfig(cfg config.AudioConfig) error {
+func (a *Application) validateAudioConfig(cfg config.Audio) error {
 	if len(cfg.Colors.Profiles) == 0 {
 		return errors.New("a color profile is required")
 	}

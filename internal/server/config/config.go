@@ -6,15 +6,25 @@ import (
 )
 
 type Config struct {
-	StripType  string    `yaml:"stripType" json:"stripType"`
-	GpioPin    int       `yaml:"gpioPin" json:"gpioPin"`
-	Brightness int       `yaml:"brightness" json:"brightness"`
-	Segments   []Segment `yaml:"segments" json:"segments"`
+	StripType   string        `yaml:"stripType" json:"stripType"`
+	GpioPin     int           `yaml:"gpioPin" json:"gpioPin"`
+	Brightness  int           `yaml:"brightness" json:"brightness"`
+	Segments    []Segment     `yaml:"segments" json:"segments"`
+	Calibration []Calibration `yaml:"calibration" json:"calibration"`
 }
 
 type Segment struct {
 	Id   int `yaml:"id" json:"id"`
 	Leds int `yaml:"leds" json:"leds"`
+}
+
+type Calibration struct {
+	Start int     `yaml:"start" json:"start"`
+	End   int     `yaml:"end" json:"end"`
+	Red   float64 `yaml:"red" json:"red"`
+	Green float64 `yaml:"green" json:"green"`
+	Blue  float64 `yaml:"blue" json:"blue"`
+	White float64 `yaml:"white" json:"white"`
 }
 
 var name = "ledctl.json"

@@ -1,6 +1,7 @@
 package visualizer
 
 import (
+	"image/color"
 	"time"
 )
 
@@ -23,5 +24,5 @@ type Segment struct {
 	// ID is the unique identifier of the Segment.
 	Id int
 	// Pix contains color data for each LED. Must be a multiple of 4 (RGBA).
-	Pix []byte
+	Pix []color.Color
 }
