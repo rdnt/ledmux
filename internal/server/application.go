@@ -46,11 +46,12 @@ type Application struct {
 	rendering bool
 	buffer    []byte
 
-	leds       int
-	stripType  string
-	gpioPin    int
-	brightness int
-	segments   []Segment
+	leds        int
+	stripType   string
+	gpioPin     int
+	brightness  int
+	segments    []Segment
+	calibration map[int]Calibration
 }
 
 type Segment struct {
@@ -58,6 +59,15 @@ type Segment struct {
 	start int
 	end   int
 	leds  int
+}
+
+type Calibration struct {
+	Start int
+	End   int
+	Red   float64
+	Green float64
+	Blue  float64
+	White float64
 }
 
 var upgrader = websocket.Upgrader{
@@ -228,6 +238,15 @@ func (a *Application) HandleSetLedsEvent(e event.SetLedsEvent) {
 		g := e.Pix[i+1]
 		b := e.Pix[i+2]
 		aa := e.Pix[i+3]
+
+		calib, ok := a.calibration[segment.start+i/4]
+		if ok {
+			r = uint8(float64(r) * calib.Red)
+			g = uint8(float64(g) * calib.Green)
+			b = uint8(float64(b) * calib.Blue)
+			aa = uint8(float64(aa) * calib.White)
+		}
+
 		// Set the current LED's color
 		// Not need to check for error
 		err := a.ws.SetLedColor(i/4+segment.start, r, g, b, aa)
