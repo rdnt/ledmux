@@ -2,7 +2,6 @@ package main
 
 import (
 	_ "embed"
-	"fmt"
 	"os"
 	"os/signal"
 
@@ -34,8 +33,11 @@ func main() {
 	}
 	defer c.Stop()
 
-	exit := make(chan os.Signal, 1)
-	signal.Notify(exit, os.Interrupt)
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+
+	// done is used to signal when the systray has finished cleaning up
+	done := make(chan bool, 1)
 
 	go tray.Run(func() {
 		tray.SetIcon(icon)
@@ -73,13 +75,13 @@ func main() {
 			}
 		}()
 	}, func() {
-		// clear the tray icon
-		tray.Quit()
-
-		exit <- os.Interrupt
+		done <- true
 	})
 
-	<-exit
-
-	fmt.Println("exit")
+	select {
+	case <-interrupt:
+		// if process is interrupted, wait for systray to quit
+		tray.Quit()
+	case <-done:
+	}
 }
