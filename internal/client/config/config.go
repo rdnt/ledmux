@@ -11,13 +11,12 @@ import (
 type Config struct {
 	name        string
 	format      string
-	DefaultMode string        `yaml:"defaultMode" json:"defaultMode"`
-	CaptureType string        `yaml:"captureType" json:"captureType"`
-	Server      Server        `yaml:"server" json:"server"`
-	Displays    [][]Display   `yaml:"displays" json:"displays"`
-	Audio       Audio         `yaml:"audio" json:"audio"`
-	Segments    []Segment     `yaml:"segments" json:"segments"`
-	Calibration []Calibration `yaml:"calibration" json:"calibration"`
+	DefaultMode string      `yaml:"defaultMode" json:"defaultMode"`
+	CaptureType string      `yaml:"captureType" json:"captureType"`
+	Server      Server      `yaml:"server" json:"server"`
+	Displays    [][]Display `yaml:"displays" json:"displays"`
+	Audio       Audio       `yaml:"audio" json:"audio"`
+	Segments    []Segment   `yaml:"segments" json:"segments"`
 }
 
 type Audio struct {
@@ -69,14 +68,6 @@ type Vector2 struct {
 type Segment struct {
 	Id   int `yaml:"id" json:"id"`
 	Leds int `yaml:"leds" json:"leds"`
-}
-
-type Calibration struct {
-	Id    int     `yaml:"id" json:"id"`
-	Red   float64 `yaml:"red" json:"red"`
-	Green float64 `yaml:"green" json:"green"`
-	Blue  float64 `yaml:"blue" json:"blue"`
-	White float64 `yaml:"white" json:"white"`
 }
 
 func (c Config) Save() error {
@@ -201,15 +192,6 @@ func createDefault() (Config, error) {
 			},
 			WindowSize: 40,
 			BlackPoint: 0.2,
-		},
-		Calibration: []Calibration{
-			{
-				Id:    0,
-				Red:   1,
-				Green: 1,
-				Blue:  1,
-				White: 1,
-			},
 		},
 	}
 
