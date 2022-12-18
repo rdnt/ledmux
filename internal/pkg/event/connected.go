@@ -6,6 +6,7 @@ type ConnectedEvent struct {
 	GpioPin    int                     `json:"gpioPin"`
 	StripType  string                  `json:"stripType"`
 	Segments   []ConnectedEventSegment `json:"segments"`
+	// TODO: add state
 }
 
 type ConnectedEventSegment struct {
@@ -16,12 +17,3 @@ type ConnectedEventSegment struct {
 func (e ConnectedEvent) Type() Type {
 	return Connected
 }
-
-//func NewConnectedEvent(segments []TurnOnEventSegment) TurnOnEvent {
-//	return TurnOnEvent{
-//		Event: Event{
-//			Event: TurnOn,
-//		},
-//		Segments: segments,
-//	}
-//}

@@ -3,9 +3,9 @@ package event
 import "fmt"
 
 type SetLedsEvent struct {
-	Event Type   `json:"event"`
-	Id    int    `json:"id"`
-	Pix   []byte `json:"pix"`
+	Event     Type   `json:"event"`
+	SegmentId int    `json:"segmentId"`
+	Pix       []byte `json:"pix"`
 }
 
 func (e SetLedsEvent) Type() Type {
@@ -13,5 +13,5 @@ func (e SetLedsEvent) Type() Type {
 }
 
 func (e SetLedsEvent) String() string {
-	return fmt.Sprint(e.Id, len(e.Pix))
+	return fmt.Sprint(e.SegmentId, len(e.Pix))
 }

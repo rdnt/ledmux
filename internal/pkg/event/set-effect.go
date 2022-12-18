@@ -8,13 +8,9 @@ const (
 )
 
 type SetEffectEvent struct {
-	Event    Type                    `json:"event"`
-	Segments []SetEffectEventSegment `json:"segments"`
-}
-
-type SetEffectEventSegment struct {
-	Id     int    `json:"id"`
-	Effect Effect `json:"effect"`
+	Event     Type   `json:"event"`
+	SegmentId int    `json:"segmentId"`
+	Effect    Effect `json:"effect"`
 }
 
 func (e SetEffectEvent) Type() Type {

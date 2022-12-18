@@ -8,10 +8,10 @@ import (
 
 	"ledctl3/internal/pkg/event"
 	"ledctl3/internal/server/config"
+	"ledctl3/pkg/color"
 	"ledctl3/pkg/ws281x"
 
 	"github.com/gorilla/websocket"
-	"golang.org/x/exp/slices"
 )
 
 type Mode string
@@ -50,7 +50,7 @@ type Application struct {
 	stripType   string
 	gpioPin     int
 	brightness  int
-	segments    []Segment
+	segments    map[int]Segment
 	calibration map[int]Calibration
 }
 
@@ -212,49 +212,81 @@ func (a *Application) reload(gpioPin, ledsCount, brightness int, stripType strin
 }
 
 func (a *Application) HandleUpdateEvent(e event.UpdateEvent) {
-	cfg := e.Segments[0]
+	leds := 0
+	for _, seg := range e.Segments {
+		leds += seg.Leds
+	}
 
-	err := a.reload(cfg.GpioPin, cfg.Leds, cfg.Brightness, cfg.StripType)
+	err := a.reload(e.GpioPin, leds, e.Brightness, e.StripType)
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
 func (a *Application) HandleSetLedsEvent(e event.SetLedsEvent) {
-	idx := slices.IndexFunc(a.segments, func(s Segment) bool {
-		return s.id == e.Id
-	})
-
-	if idx == -1 {
-		fmt.Println("Segment doesn't exist:", e.Id)
+	seg, ok := a.segments[e.SegmentId]
+	if !ok {
+		fmt.Println("Segment doesn't exist:", e.SegmentId)
 		return
 	}
 
-	segment := a.segments[idx]
-
-	for i := 0; i < (segment.end-segment.start)*4; i += 4 {
+	for i := seg.start; i < seg.end; i++ {
 		// Parse color data for current LED
-		r := e.Pix[i]
-		g := e.Pix[i+1]
-		b := e.Pix[i+2]
-		aa := e.Pix[i+3]
+		offset := i * 4
 
-		calib, ok := a.calibration[segment.start+i/4]
-		if ok {
-			r = uint8(float64(r) * calib.Red)
-			g = uint8(float64(g) * calib.Green)
-			b = uint8(float64(b) * calib.Blue)
-			aa = uint8(float64(aa) * calib.White)
-		}
+		r := e.Pix[offset]
+		g := e.Pix[offset+1]
+		b := e.Pix[offset+2]
+		aa := e.Pix[offset+3]
 
 		// Set the current LED's color
 		// Not need to check for error
-		err := a.ws.SetLedColor(i/4+segment.start, r, g, b, aa)
+		err := a.setLedColor(i, r, g, b, aa)
 		if err != nil {
 			fmt.Println(err)
 		}
 
 		//out += color.RGB(seg.Pix[i], seg.Pix[i+1], seg.Pix[i+2], true).Sprintf(" ")
+	}
+}
+
+func (a *Application) HandleSetColorEvent(e event.SetColorEvent) {
+	seg, ok := a.segments[e.SegmentId]
+	if !ok {
+		fmt.Println("Segment doesn't exist:", e.SegmentId)
+		return
+	}
+
+	clr, err := color.FromString(e.Color)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	r, g, b, aa := clr.RGBA()
+
+	for i := seg.start; i < seg.end; i++ {
+		err := a.setLedColor(i, uint8(r>>8), uint8(g>>8), uint8(b>>8), uint8(aa>>8))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
+}
+
+func (a *Application) HandleTurnOffEvent(e event.TurnOffEvent) {
+	seg, ok := a.segments[e.SegmentId]
+	if !ok {
+		fmt.Println("Segment doesn't exist:", e.SegmentId)
+		return
+	}
+
+	for i := seg.start; i < seg.end; i++ {
+		err := a.setLedColor(i, 0, 0, 0, 0)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 	}
 }
 
@@ -286,6 +318,18 @@ func (a *Application) HandleConnected(wsconn *websocket.Conn) {
 	}
 }
 
+func (a *Application) setLedColor(id int, r, g, b, aa uint8) error {
+	calib, ok := a.calibration[id]
+	if ok {
+		r = uint8(float64(r) * calib.Red)
+		g = uint8(float64(g) * calib.Green)
+		b = uint8(float64(b) * calib.Blue)
+		aa = uint8(float64(aa) * calib.White)
+	}
+
+	return a.ws.SetLedColor(id, r, g, b, aa)
+}
+
 func (a *Application) ProcessEvents(events ...event.Event) {
 	for _, e := range events {
 		//fmt.Printf("<- %s\n", e)
@@ -295,6 +339,8 @@ func (a *Application) ProcessEvents(events ...event.Event) {
 			a.HandleUpdateEvent(e)
 		case event.SetLedsEvent:
 			a.HandleSetLedsEvent(e)
+		case event.SetColorEvent:
+			a.HandleSetColorEvent(e)
 		default:
 			fmt.Println("unknown event", e)
 		}
