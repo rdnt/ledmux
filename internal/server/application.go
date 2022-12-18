@@ -335,12 +335,18 @@ func (a *Application) ProcessEvents(events ...event.Event) {
 		//fmt.Printf("<- %s\n", e)
 
 		switch e := e.(type) {
-		case event.UpdateEvent:
-			a.HandleUpdateEvent(e)
-		case event.SetLedsEvent:
-			a.HandleSetLedsEvent(e)
 		case event.SetColorEvent:
 			a.HandleSetColorEvent(e)
+		case event.SetEffectEvent:
+			fmt.Println("setEffect event: no handler")
+		case event.SetLedsEvent:
+			a.HandleSetLedsEvent(e)
+		case event.TurnOffEvent:
+			a.HandleTurnOffEvent(e)
+		case event.TurnOnEvent:
+			fmt.Println("turnOn event: no handler")
+		case event.UpdateEvent:
+			a.HandleUpdateEvent(e)
 		default:
 			fmt.Println("unknown event", e)
 		}
