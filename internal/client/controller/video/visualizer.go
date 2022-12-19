@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"image/color"
 	gocolor "image/color"
 	"image/png"
 	"log"
@@ -83,8 +84,6 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 		return err
 	}
 
-	fmt.Println("DISPLAYS", v.displays)
-
 	displayConfigs, err := v.matchDisplays(v.displays)
 	if err != nil {
 		return err
@@ -95,12 +94,6 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 
 	for _, d := range v.displays {
 		cfg := displayConfigs[d.Id()]
-
-		//fmt.Println("################ MATCH #################")
-		//fmt.Println(d.Id())
-		//fmt.Println(d)
-		//fmt.Println(cfg)
-		//fmt.Println("########################################")
 
 		go func(d Display) {
 			defer wg.Done()
@@ -300,7 +293,7 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 
 	//fmt.Println("width", width, "height", height, "from", fromOffset, "size", size)
 
-	colors := []colorful.Color{}
+	colors := []color.Color{}
 
 	for i := 0; i < len(pix); i += 4 {
 		clr, _ := colorful.MakeColor(gocolor.NRGBA{
@@ -320,25 +313,41 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 
 	pix = []byte{}
 	//out := ""
+	colors = make([]color.Color, cfg.Leds)
 	for i := 0.0; i < float64(cfg.Leds); i++ {
 		clr := grad.GetInterpolatedColor((i + 1) / float64(cfg.Leds))
-		r, g, b := clr.RGB255()
+		r, g, b, a := clr.RGBA()
 		//out += color.RGB(r, g, b, true).Sprintf(" ")
-		pix = append(pix, []byte{r, g, b, 0xff}...)
+
+		colors[int(i)] = color.RGBA{
+			R: uint8(r >> 8),
+			G: uint8(g >> 8),
+			B: uint8(b >> 8),
+			A: uint8(a >> 8),
+		}
 	}
 	//fmt.Println(out)
 
 	//fmt.Println("LENPIX", len(pix), d)
 	//pix = averagePix(pix, cfg.Leds)
 
+	//for i := 0; i < len(pix); i += 4 {
+	//	colors[i/4] = color.RGBA{
+	//		R: pix[i],
+	//		G: pix[i+1],
+	//		B: pix[i+2],
+	//		A: pix[i+3],
+	//	}
+	//}
+
 	v.events <- visualizer.UpdateEvent{
 		Segments: []visualizer.Segment{
 			{
 				Id:  cfg.SegmentId,
-				Pix: pix,
+				Pix: colors,
 			},
 		},
-		Duration: time.Since(now),
+		Latency: time.Since(now),
 	}
 }
 
@@ -587,7 +596,7 @@ func (v *Visualizer) matchDisplays(displays []Display) (map[int]DisplayConfig, e
 
 func New(opts ...Option) (*Visualizer, error) {
 	v := &Visualizer{
-		displayResizers: make([]rez.Converter, 2),
+		displayResizers: make([]rez.Converter, 3),
 	}
 
 	for _, opt := range opts {

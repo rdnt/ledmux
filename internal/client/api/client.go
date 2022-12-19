@@ -1,9 +1,10 @@
 package api
 
 import (
+	"sync"
+
 	"github.com/gorilla/websocket"
 	"github.com/lithammer/shortuuid/v3"
-	"sync"
 )
 
 type Client struct {
@@ -16,7 +17,7 @@ func (c *Client) Send(b []byte) error {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 
-	return c.conn.WriteMessage(websocket.BinaryMessage, b)
+	return c.conn.WriteMessage(websocket.TextMessage, b)
 }
 
 func (c *Client) Receive() ([]byte, error) {

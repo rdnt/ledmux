@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"ledctl3/internal/client/config"
@@ -8,27 +9,26 @@ import (
 	"ledctl3/internal/client/controller/video/capturer/dxgi"
 )
 
-type Option func(*App) error
+type Option func(*Application) error
 
 //func WithLedsCount(leds int) Option {
-//	return func(a *App) error {
+//	return func(a *Application) error {
 //		a.leds = leds
 //		return nil
 //	}
 //}
 
-func WithConfig(cfg *config.Config) Option {
-	return func(a *App) error {
-		if cfg == nil {
-			return fmt.Errorf("invalid config")
-		}
+func WithConfig(cfg config.Config) Option {
+	return func(a *Application) error {
+		b, _ := json.Marshal(cfg)
+		fmt.Println(string(b))
 
-		err := a.validateConfig(*cfg)
+		err := a.validateConfig(cfg)
 		if err != nil {
 			return err
 		}
 
-		err = a.applyConfig(*cfg)
+		err = a.applyConfig(cfg)
 		if err != nil {
 			return err
 		}
@@ -74,14 +74,14 @@ func getPixSliceSize(width, height, from, to int) int {
 }
 
 //func WithServerIP(ip string) Option {
-//	return func(a *App) error {
+//	return func(a *Application) error {
 //		a.ip = ip
 //		return nil
 //	}
 //}
 
 func WithDisplayCapturer(capturer CapturerType) Option {
-	return func(a *App) error {
+	return func(a *Application) error {
 		var err error
 
 		switch capturer {
