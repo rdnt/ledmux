@@ -65,15 +65,15 @@ func validateCalibration(calib []config.Calibration) error {
 
 func (a *Application) applyConfig(c config.Config) (err error) {
 	offset := 0
-	segs := []Segment{}
+	segs := map[int]Segment{}
 
 	for _, seg := range c.Segments {
-		segs = append(segs, Segment{
+		segs[seg.Id] = Segment{
 			id:    seg.Id,
 			leds:  seg.Leds,
 			start: offset,
 			end:   offset + seg.Leds,
-		})
+		}
 
 		offset += seg.Leds
 	}

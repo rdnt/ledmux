@@ -142,9 +142,9 @@ func (ctl *Controller) SetMode(mode Mode) error {
 					}
 
 					events = append(events, event.SetLedsEvent{
-						Event: event.SetLeds,
-						Id:    seg.Id,
-						Pix:   pix,
+						Event:     event.SetLeds,
+						SegmentId: seg.Id,
+						Pix:       pix,
 					})
 				}
 

@@ -1,12 +1,8 @@
 package event
 
 type TurnOnEvent struct {
-	Event    Type                 `json:"event"`
-	Segments []TurnOnEventSegment `json:"segments"`
-}
-
-type TurnOnEventSegment struct {
-	Id int `json:"id"`
+	Event     Type `json:"event"`
+	SegmentId int  `json:"segmentId"`
 }
 
 func (e TurnOnEvent) Type() Type {

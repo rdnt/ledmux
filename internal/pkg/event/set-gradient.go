@@ -1,17 +1,13 @@
 package event
 
 type SetGradientEvent struct {
-	Event    Type                      `json:"event"`
-	Segments []SetGradientEventSegment `json:"segments"`
-}
-
-type SetGradientEventSegment struct {
-	Id    int                    `json:"id"`
-	Steps []SetGradientEventStep `json:"colors"`
+	Event     Type                   `json:"event"`
+	SegmentId int                    `json:"segmentId"`
+	Steps     []SetGradientEventStep `json:"steps"`
 }
 
 type SetGradientEventStep struct {
-	Color    [3]byte `json:"colors"`
+	Color    string  `json:"color"`
 	Position float64 `json:"position"`
 }
 

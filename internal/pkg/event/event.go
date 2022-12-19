@@ -11,12 +11,12 @@ type Type string
 const (
 	Connected   Type = "connected"
 	Update      Type = "update"
-	SetLeds     Type = "set-leds"
-	SetColor    Type = "set-color"
-	SetEffect   Type = "set-effect"
-	SetGradient Type = "set-gradient"
-	TurnOn      Type = "turn-on"
-	TurnOff     Type = "turn-off"
+	SetLeds     Type = "setLeds"
+	SetColor    Type = "setColor"
+	SetEffect   Type = "setEffect"
+	SetGradient Type = "setGradient"
+	TurnOn      Type = "turnOn"
+	TurnOff     Type = "turnOff"
 )
 
 type Event interface {
@@ -112,16 +112,36 @@ func parseEventArray(b []byte) ([]Event, error) {
 
 func FromJSON(typ Type, b []byte) (Event, error) {
 	switch typ {
-	case TurnOn:
-		var e TurnOnEvent
+	case Connected:
+		var e ConnectedEvent
+		err := json.Unmarshal(b, &e)
+		return e, err
+	case SetColor:
+		var e SetColorEvent
+		err := json.Unmarshal(b, &e)
+		return e, err
+	case SetEffect:
+		var e SetEffectEvent
+		err := json.Unmarshal(b, &e)
+		return e, err
+	case SetGradient:
+		var e SetGradientEvent
 		err := json.Unmarshal(b, &e)
 		return e, err
 	case SetLeds:
 		var e SetLedsEvent
 		err := json.Unmarshal(b, &e)
 		return e, err
-	case Connected:
-		var e ConnectedEvent
+	case TurnOff:
+		var e TurnOffEvent
+		err := json.Unmarshal(b, &e)
+		return e, err
+	case TurnOn:
+		var e TurnOnEvent
+		err := json.Unmarshal(b, &e)
+		return e, err
+	case Update:
+		var e UpdateEvent
 		err := json.Unmarshal(b, &e)
 		return e, err
 	default:
