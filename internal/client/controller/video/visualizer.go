@@ -6,16 +6,10 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	gocolor "image/color"
-	"image/png"
-	"log"
-	"os"
 	"sync"
 	"time"
 
-	"ledctl3/internal/client/config"
 	"ledctl3/internal/client/visualizer"
-	"ledctl3/pkg/gradient"
 
 	"github.com/bamiaux/rez"
 	"github.com/lucasb-eyer/go-colorful"
@@ -33,41 +27,39 @@ type Visualizer struct {
 	events         chan visualizer.UpdateEvent
 	displayConfigs [][]DisplayConfig
 
-	displays        []Display
-	displayResizers []rez.Converter
+	displays []Display
+	scaler   map[int]rez.Converter
 }
 
 type DisplayConfig struct {
-	Id             int
-	SegmentId      int
-	Leds           int
-	Width          int
-	Height         int
-	HorizontalLeds int
-	VerticalLeds   int
-	Left           int
-	Top            int
-	Framerate      int
-	BoundsOffset   int
-	BoundsSize     int
-	Bounds         config.Bounds
+	Id        int
+	Width     int
+	Height    int
+	Left      int
+	Top       int
+	Framerate int
+	Segments  []Segment
 }
 
-type Bounds struct {
-	From Vector2 `yaml:"from" json:"from"`
-	To   Vector2 `yaml:"to" json:"to"`
+type Segment struct {
+	Id      int
+	Leds    int
+	From    Vector2
+	To      Vector2
+	Reverse bool
 }
 
 type Vector2 struct {
-	X int `yaml:"x" json:"x"`
-	Y int `yaml:"y" json:"y"`
+	X int
+	Y int
 }
 
 func (d DisplayConfig) String() string {
-	return fmt.Sprintf(
-		"DisplayConfig{id: %d, segmentId: %d, leds: %d, width: %d, height: %d, left: %d, top: %d, framerate: %d, offset: %d, size: %d, bounds: %+v}",
-		d.Id, d.SegmentId, d.Leds, d.Width, d.Height, d.Left, d.Top, d.Framerate, d.BoundsOffset, d.BoundsSize, d.Bounds,
-	)
+	//return fmt.Sprintf(
+	//	"DisplayConfig{id: %d, segmentId: %d, leds: %d, width: %d, height: %d, left: %d, top: %d, framerate: %d, offset: %d, size: %d, bounds: %+v}",
+	//	d.Id, d.SegmentId, d.Leds, d.Width, d.Height, d.Left, d.Top, d.Framerate, d.BoundsOffset, d.BoundsSize, d.Bounds,
+	//)
+	return fmt.Sprintf("%#v", d)
 }
 
 func (v *Visualizer) Events() chan visualizer.UpdateEvent {
@@ -84,9 +76,128 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 		return err
 	}
 
+	//_, err = func() (any, error) {
+	//	v.scaler = make(map[int]Scaler, len(v.displays))
+	//
+	//	for _, d := range v.displays {
+	//		//src := image.NewRGBA(image.Rect(0, 0, d.Width(), d.Height()))
+	//		//
+	//		//top := image.NewRGBA(image.Rect(0, 0, d.Width(), d.Height()/10))
+	//		//right := image.NewRGBA(image.Rect(d.Width()/10*9, 0, d.Width(), d.Height()))
+	//		//bottom := image.NewRGBA(image.Rect(0, d.Height()/10*9, d.Width(), d.Height()))
+	//		//left := image.NewRGBA(image.Rect(0, 0, d.Width()/10, d.Height()))
+	//
+	//		//horizontal := draw.BiLinear.NewScaler(d.Width(), 1, d.Width(), d.Height())
+	//		//vertical := draw.BiLinear.NewScaler(1, d.Height(), d.Width(), d.Height())
+	//		//
+	//		//v.scaler[d.Id()] = Scaler{
+	//		//	Horizontal: horizontal,
+	//		//	Vertical:   vertical,
+	//		//}
+	//		//top2 := image.NewRGBA(image.Rect(0, 0, d.Width(), 10))
+	//		//topCfg, err := rez.PrepareConversion(top2, top)
+	//		//if err != nil {
+	//		//	return nil, err
+	//		//}
+	//		//
+	//		//rightCfg, err := rez.PrepareConversion(right, src)
+	//		//if err != nil {
+	//		//	return nil, err
+	//		//}
+	//		//
+	//		//bottomCfg, err := rez.PrepareConversion(bottom, src)
+	//		//if err != nil {
+	//		//	return nil, err
+	//		//}
+	//		//
+	//		//leftCfg, err := rez.PrepareConversion(left, src)
+	//		//if err != nil {
+	//		//	return nil, err
+	//		//}
+	//		//
+	//		//topRez, err := rez.NewConverter(topCfg, rez.NewBilinearFilter())
+	//		//if err != nil {
+	//		//	return nil, err
+	//		//}
+	//		//
+	//		//rightRez, err := rez.NewConverter(rightCfg, rez.NewBilinearFilter())
+	//		//if err != nil {
+	//		//	return nil, err
+	//		//}
+	//		//
+	//		//bottomRez, err := rez.NewConverter(bottomCfg, rez.NewBilinearFilter())
+	//		//if err != nil {
+	//		//	return nil, err
+	//		//}
+	//		//
+	//		//leftRez, err := rez.NewConverter(leftCfg, rez.NewBilinearFilter())
+	//		//if err != nil {
+	//		//	return nil, err
+	//		//}
+	//		//
+	//		//rezs := []rez.Converter{topRez, rightRez, bottomRez, leftRez}
+	//		//
+	//		//v.resizer[d.Id()] = rezs
+	//	}
+	//
+	//	return nil, nil
+	//}()
+	//if err != nil {
+	//	return err
+	//}
+
 	displayConfigs, err := v.matchDisplays(v.displays)
 	if err != nil {
 		return err
+	}
+
+	v.scaler = make(map[int]rez.Converter)
+
+	for _, cfg := range displayConfigs {
+		for _, seg := range cfg.Segments {
+			rect := image.Rect(seg.From.X, seg.From.Y, seg.To.X, seg.To.Y)
+
+			// TODO: only allow cube (Dx == Dy) if segment is only 1 led
+
+			var width, height int
+
+			if rect.Dx() > rect.Dy() {
+				// horizontal
+				width = seg.Leds
+				height = 2
+			} else {
+				// vertical
+				width = 2
+				height = seg.Leds
+			}
+
+			//v.scaler[seg.Id] = draw.ApproxBiLinear
+			//v.scaler[seg.Id] = draw.BiLinear.NewScaler(width, height, cfg.Width, cfg.Height)
+
+			i1 := image.NewRGBA(image.Rect(0, 0, width, height))
+			i2 := image.NewRGBA(rect)
+			//convertCfg, err := rez.PrepareConversion(&image.RGBA{
+			//	Pix:    nil,
+			//	Stride: width * 4,
+			//	Rect:   image.Rect(0, 0, width, height),
+			//}, &image.RGBA{
+			//	Pix:    nil,
+			//	Stride: rect.Dx() * 4,
+			//	Rect:   rect,
+			//})
+			convertCfg, err := rez.PrepareConversion(i1, i2)
+			if err != nil {
+				panic(err)
+			}
+
+			converter, err := rez.NewConverter(convertCfg, rez.NewBicubicFilter())
+			if err != nil {
+				panic(err)
+			}
+
+			v.scaler[seg.Id] = converter
+
+		}
 	}
 
 	var wg sync.WaitGroup
@@ -169,90 +280,148 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 	//fmt.Println(d)
 	//fmt.Println(cfg)
 
-	if v.displayResizers[d.Id()] == nil {
-		src := &image.NRGBA{
-			Pix:    pix,
-			Stride: d.Width() * 4,
-			Rect:   image.Rect(0, 0, d.Width(), d.Height()),
-		}
+	//if v.resizer[d.Id()] == nil {
+	//	src := &image.NRGBA{
+	//		Pix:    pix,
+	//		Stride: d.Width() * 4,
+	//		Rect:   image.Rect(0, 0, d.Width(), d.Height()),
+	//	}
+	//
+	//	//ratio := (d.Width()*2 + d.Height()*2) / (cfg.Leds / 2)
+	//	//ratio = 90
+	//
+	//	//fmt.Println("ratio", ratio)
+	//	//fmt.Println(d.Width()/ratio, d.Height()/ratio)
+	//
+	//	dst := image.NewNRGBA(image.Rect(0, 0, cfg.HorizontalLeds, cfg.VerticalLeds))
+	//
+	//	//fmt.Println()
+	//
+	//	convertCfg, err := rez.PrepareConversion(dst, src)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//
+	//	converter, err := rez.NewConverter(convertCfg, rez.NewBilinearFilter())
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//
+	//	v.displayResizers[d.Id()] = converter
+	//}
 
-		//ratio := (d.Width()*2 + d.Height()*2) / (cfg.Leds / 2)
-		//ratio = 90
-
-		//fmt.Println("ratio", ratio)
-		//fmt.Println(d.Width()/ratio, d.Height()/ratio)
-
-		dst := image.NewNRGBA(image.Rect(0, 0, cfg.HorizontalLeds, cfg.VerticalLeds))
-
-		//fmt.Println()
-
-		convertCfg, err := rez.PrepareConversion(dst, src)
-		if err != nil {
-			panic(err)
-		}
-
-		converter, err := rez.NewConverter(convertCfg, rez.NewBilinearFilter())
-		if err != nil {
-			panic(err)
-		}
-
-		v.displayResizers[d.Id()] = converter
-	}
-
-	src := &image.NRGBA{
+	src := &image.RGBA{
 		Pix:    pix,
 		Stride: d.Width() * 4,
 		Rect:   image.Rect(0, 0, d.Width(), d.Height()),
 	}
 
+	segs := make([]visualizer.Segment, len(cfg.Segments))
 	//ratio := (d.Width() + d.Height()) / (cfg.Leds / 2)
 	//ratio = 90
 
-	dst := image.NewNRGBA(image.Rect(0, 0, cfg.HorizontalLeds, cfg.VerticalLeds))
+	var wg sync.WaitGroup
+	wg.Add(len(cfg.Segments))
 
-	err := v.displayResizers[d.Id()].Convert(dst, src)
-	if err != nil {
-		panic(err)
+	for i, seg := range cfg.Segments {
+		go func(i int, seg Segment) {
+			defer wg.Done()
+
+			rect := image.Rect(seg.From.X, seg.From.Y, seg.To.X, seg.To.Y)
+
+			sub := src.SubImage(rect)
+
+			var dst *image.RGBA
+
+			if rect.Dx() > rect.Dy() {
+				// horizontal
+				dst = image.NewRGBA(image.Rect(0, 0, seg.Leds, 2))
+			} else {
+				// vertical
+				dst = image.NewRGBA(image.Rect(0, 0, 2, seg.Leds))
+			}
+
+			//v.scaler[d.Id()].Scale(dst, dst.Bounds(), sub, sub.Bounds(), draw.Over, nil)
+
+			err := v.scaler[d.Id()].Convert(dst, sub)
+			if err != nil {
+				panic(err)
+			}
+
+			colors := []color.Color{}
+
+			for i := 0; i < len(dst.Pix); i += 4 {
+				clr, _ := colorful.MakeColor(color.NRGBA{
+					R: dst.Pix[i],
+					G: dst.Pix[i+1],
+					B: dst.Pix[i+2],
+					A: dst.Pix[i+3],
+				})
+
+				colors = append(colors, clr)
+			}
+
+			if seg.Reverse {
+				reverse(colors)
+			}
+
+			segs[i] = visualizer.Segment{
+				Id:  seg.Id,
+				Pix: colors,
+			}
+		}(i, seg)
+
 	}
 
-	pix = dst.Pix
+	wg.Wait()
+
+	v.events <- visualizer.UpdateEvent{
+		Segments: segs,
+		Latency:  time.Since(now),
+	}
+	//err := v.resizer[d.Id()][0].Convert(top, srcTopCrop)
+	//if err != nil {
+	//	panic(err)
+	//}
+
+	//pix = dst.Pix
 
 	//width, height := d.Width()/ratio, d.Height()/ratio
 
 	//total := (d.Width()/ratio + d.Height()/ratio) * 2
 
-	width, height := cfg.HorizontalLeds, cfg.VerticalLeds
-	if d.Orientation() == Portrait || d.Orientation() == PortraitFlipped {
-		width, height = height, width
-	}
+	//width, height := d.Width(), d.Height()
+	//if d.Orientation() == Portrait || d.Orientation() == PortraitFlipped {
+	//	width, height = height, width
+	//}
 
-	func() {
-		if saved {
-			return
-		}
-
-		saved = true
-
-		img := &image.NRGBA{
-			Pix:    pix,
-			Stride: width * 4,
-			Rect:   image.Rect(0, 0, width, height),
-		}
-
-		f, err := os.Create("frame.png")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if err := png.Encode(f, img); err != nil {
-			f.Close()
-			log.Fatal(err)
-		}
-
-		if err := f.Close(); err != nil {
-			log.Fatal(err)
-		}
-	}()
+	//func() {
+	//	if saved {
+	//		return
+	//	}
+	//
+	//	saved = true
+	//
+	//	//img := &image.NRGBA{
+	//	//	Pix:    pix,
+	//	//	Stride: width * 4,
+	//	//	Rect:   image.Rect(0, 0, width, height),
+	//	//}
+	//
+	//	f, err := os.Create("frame.png")
+	//	if err != nil {
+	//		log.Fatal(err)
+	//	}
+	//
+	//	if err := png.Encode(f, top); err != nil {
+	//		f.Close()
+	//		log.Fatal(err)
+	//	}
+	//
+	//	if err := f.Close(); err != nil {
+	//		log.Fatal(err)
+	//	}
+	//}()
 
 	//out := ""
 	//for i := 0; i < len(pix); i += 4 {
@@ -264,7 +433,7 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 	//}
 	//fmt.Println(out)
 
-	pix = getEdges(pix, width, height)
+	//pix = getEdges(pix, width, height)
 
 	//out := ""
 	//for i := 0; i < len(pix); i += 4 {
@@ -279,53 +448,53 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 	//
 	////fmt.Println("RATIO", ratioX, ratioY)
 	//
-	fromOffset := calculateOffset(width, height, 3, 17)
-	toOffset := calculateOffset(width, height, 29, 17)
+	//fromOffset := calculateOffset(width, height, 3, 17)
+	//toOffset := calculateOffset(width, height, 29, 17)
 
-	size := getPixSliceSize(width, height, fromOffset, toOffset)
+	//size := getPixSliceSize(width, height, fromOffset, toOffset)
 	//
-	pix = getBounds(pix, fromOffset*4, size*4)
+	//pix = getBounds(pix, fromOffset*4, size*4)
 
 	// TODO: load from config
-	pix = adjustWhitePoint(pix, 50, 255)
+	//pix = adjustWhitePoint(pix, 50, 255)
 
 	//pix = adjustWhitePoint(pix, 0, 256)
 
 	//fmt.Println("width", width, "height", height, "from", fromOffset, "size", size)
 
-	colors := []color.Color{}
-
-	for i := 0; i < len(pix); i += 4 {
-		clr, _ := colorful.MakeColor(gocolor.NRGBA{
-			R: pix[i],
-			G: pix[i+1],
-			B: pix[i+2],
-			A: pix[i+3],
-		})
-
-		colors = append(colors, clr)
-	}
-
-	grad, err := gradient.New(colors...)
-	if err != nil {
-		panic(err)
-	}
-
-	pix = []byte{}
+	//colors := []color.Color{}
+	////
+	//for i := 0; i < len(pix); i += 4 {
+	//	clr, _ := colorful.MakeColor(color.NRGBA{
+	//		R: pix[i],
+	//		G: pix[i+1],
+	//		B: pix[i+2],
+	//		A: pix[i+3],
+	//	})
+	//
+	//	colors = append(colors, clr)
+	//}
+	//
+	//grad, err := gradient.New(colors...)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//pix = []byte{}
 	//out := ""
-	colors = make([]color.Color, cfg.Leds)
-	for i := 0.0; i < float64(cfg.Leds); i++ {
-		clr := grad.GetInterpolatedColor((i + 1) / float64(cfg.Leds))
-		r, g, b, a := clr.RGBA()
-		//out += color.RGB(r, g, b, true).Sprintf(" ")
-
-		colors[int(i)] = color.RGBA{
-			R: uint8(r >> 8),
-			G: uint8(g >> 8),
-			B: uint8(b >> 8),
-			A: uint8(a >> 8),
-		}
-	}
+	//colors := make([]color.Color, cfg.Leds)
+	//for i := 0.0; i < float64(cfg.Leds); i++ {
+	//	clr := grad.GetInterpolatedColor((i + 1) / float64(cfg.Leds))
+	//	r, g, b, a := clr.RGBA()
+	//	//out += color.RGB(r, g, b, true).Sprintf(" ")
+	//
+	//	colors[int(i)] = color.RGBA{
+	//		R: uint8(r >> 8),
+	//		G: uint8(g >> 8),
+	//		B: uint8(b >> 8),
+	//		A: uint8(a >> 8),
+	//	}
+	//}
 	//fmt.Println(out)
 
 	//fmt.Println("LENPIX", len(pix), d)
@@ -340,14 +509,20 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 	//	}
 	//}
 
-	v.events <- visualizer.UpdateEvent{
-		Segments: []visualizer.Segment{
-			{
-				Id:  cfg.SegmentId,
-				Pix: colors,
-			},
-		},
-		Latency: time.Since(now),
+	//v.events <- visualizer.UpdateEvent{
+	//	Segments: []visualizer.Segment{
+	//		{
+	//			Id:  0, // TODO
+	//			Pix: colors,
+	//		},
+	//	},
+	//	Latency: time.Since(now),
+	//}
+}
+
+func reverse[S ~[]E, E any](s S) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
 	}
 }
 
@@ -595,9 +770,7 @@ func (v *Visualizer) matchDisplays(displays []Display) (map[int]DisplayConfig, e
 }
 
 func New(opts ...Option) (*Visualizer, error) {
-	v := &Visualizer{
-		displayResizers: make([]rez.Converter, 3),
-	}
+	v := &Visualizer{}
 
 	for _, opt := range opts {
 		err := opt(v)

@@ -46,15 +46,19 @@ type Server struct {
 }
 
 type Display struct {
-	Segment        int    `yaml:"segment" json:"segment"`
-	Width          int    `yaml:"width" json:"width"`
-	Height         int    `yaml:"height" json:"height"`
-	Left           int    `yaml:"left" json:"left"`
-	Top            int    `yaml:"top" json:"top"`
-	HorizontalLeds int    `yaml:"horizontalLeds" json:"horizontalLeds"`
-	VerticalLeds   int    `yaml:"verticalLeds" json:"verticalLeds"`
-	Bounds         Bounds `yaml:"bounds" json:"bounds"`
-	Framerate      int    `yaml:"framerate" json:"framerate"`
+	Segments  []DisplaySegment `yaml:"segments" json:"segments"`
+	Width     int              `yaml:"width" json:"width"`
+	Height    int              `yaml:"height" json:"height"`
+	Left      int              `yaml:"left" json:"left"`
+	Top       int              `yaml:"top" json:"top"`
+	Framerate int              `yaml:"framerate" json:"framerate"`
+}
+
+type DisplaySegment struct {
+	Id      int     `yaml:"id" json:"id"`
+	From    Vector2 `yaml:"from" json:"from"`
+	To      Vector2 `yaml:"to" json:"to"`
+	Reverse bool    `yaml:"reverse" json:"reverse"`
 }
 
 type Bounds struct {
@@ -164,15 +168,18 @@ func createDefault() (Config, error) {
 		Displays: [][]Display{
 			{
 				{
-					Segment:   0,
 					Width:     1920,
 					Height:    1080,
 					Left:      0,
 					Top:       0,
 					Framerate: 60,
-					Bounds: Bounds{
-						From: Vector2{X: 0, Y: 0},
-						To:   Vector2{X: 0, Y: 0},
+					Segments: []DisplaySegment{
+						{
+							Id:      0,
+							From:    Vector2{X: 0, Y: 0},
+							To:      Vector2{X: 1919, Y: 1079},
+							Reverse: false,
+						},
 					},
 				},
 			},

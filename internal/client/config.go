@@ -148,15 +148,15 @@ func (a *Application) validateDisplayConfigs(displayConfigs [][]config.Display) 
 				return fmt.Errorf("invalid framerate for display %d", i)
 			}
 
-			v1 := validateBounds(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
-			if !v1 {
-				return fmt.Errorf("invalid bounds for display %d (from)", i)
-			}
-
-			v2 := validateBounds(d.Width, d.Height, d.Bounds.To.X, d.Bounds.To.Y)
-			if !v2 {
-				return fmt.Errorf("invalid bounds for display %d (to)", i)
-			}
+			//v1 := validateBounds(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
+			//if !v1 {
+			//	return fmt.Errorf("invalid bounds for display %d (from)", i)
+			//}
+			//
+			//v2 := validateBounds(d.Width, d.Height, d.Bounds.To.X, d.Bounds.To.Y)
+			//if !v2 {
+			//	return fmt.Errorf("invalid bounds for display %d (to)", i)
+			//}
 		}
 	}
 
@@ -245,41 +245,64 @@ func (a *Application) applyConfig(c config.Config) (err error) {
 		)
 	}
 
-	for i, cfg := range c.Displays {
+	for _, cfg := range c.Displays {
 		parsedCfg := []video.DisplayConfig{}
 
 		for j, d := range cfg {
-			fromOffset := calculateOffset(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
-			toOffset := calculateOffset(d.Width, d.Height, d.Bounds.To.X, d.Bounds.To.Y)
+			//fromOffset := calculateOffset(d.Width, d.Height, d.Bounds.From.X, d.Bounds.From.Y)
+			//toOffset := calculateOffset(d.Width, d.Height, d.Bounds.To.X, d.Bounds.To.Y)
+			//
+			//size := getPixSliceSize(d.Width, d.Height, fromOffset, toOffset)
 
-			size := getPixSliceSize(d.Width, d.Height, fromOffset, toOffset)
+			//leds := 0
+			//for _, seg := range a.Segments {
+			//	if seg.Id == d.Segment {
+			//		leds = seg.Leds
+			//	}
+			//}
 
-			leds := 0
-			for _, seg := range a.Segments {
-				if seg.Id == d.Segment {
-					leds = seg.Leds
+			//if leds == 0 {
+			//	return fmt.Errorf("segment not found for display %d of config %d", j, i)
+			//}
+
+			var segs []video.Segment
+
+			for _, dseg := range d.Segments {
+				leds := 0
+				for _, aseg := range a.Segments {
+					if aseg.Id == dseg.Id {
+						leds = aseg.Leds
+					}
 				}
-			}
 
-			if leds == 0 {
-				return fmt.Errorf("segment not found for display %d of config %d", j, i)
+				if leds == 0 {
+					panic("invalid display segments")
+				}
+
+				segs = append(segs, video.Segment{
+					Id:      dseg.Id,
+					Leds:    leds,
+					From:    video.Vector2(dseg.From),
+					To:      video.Vector2(dseg.To),
+					Reverse: dseg.Reverse,
+				})
 			}
 
 			parsedCfg = append(
 				parsedCfg, video.DisplayConfig{
-					Id:             j,
-					SegmentId:      d.Segment,
-					Leds:           leds,
-					Width:          d.Width,
-					Height:         d.Height,
-					Left:           d.Left,
-					Top:            d.Top,
-					HorizontalLeds: d.HorizontalLeds,
-					VerticalLeds:   d.VerticalLeds,
-					Framerate:      d.Framerate,
-					BoundsOffset:   fromOffset,
-					BoundsSize:     size,
-					Bounds:         d.Bounds,
+					Id: j,
+					//SegmentId:      d.Segment,
+					Width:    d.Width,
+					Height:   d.Height,
+					Left:     d.Left,
+					Top:      d.Top,
+					Segments: segs,
+					//HorizontalLeds: d.HorizontalLeds,
+					//VerticalLeds:   d.VerticalLeds,
+					Framerate: d.Framerate,
+					//BoundsOffset:   fromOffset,
+					//BoundsSize:     size,
+					//Bounds:         d.Bounds,
 				},
 			)
 		}

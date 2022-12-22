@@ -230,7 +230,7 @@ func (a *Application) HandleSetLedsEvent(e event.SetLedsEvent) {
 		return
 	}
 
-	for i := seg.start; i < seg.end; i++ {
+	for i := 0; i < seg.leds; i++ {
 		// Parse color data for current LED
 		offset := i * 4
 
@@ -241,7 +241,7 @@ func (a *Application) HandleSetLedsEvent(e event.SetLedsEvent) {
 
 		// Set the current LED's color
 		// Not need to check for error
-		err := a.setLedColor(i, r, g, b, aa)
+		err := a.setLedColor(i+seg.start, r, g, b, aa)
 		if err != nil {
 			fmt.Println(err)
 		}
