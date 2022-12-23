@@ -11,7 +11,8 @@ import (
 
 	"ledctl3/internal/client/visualizer"
 
-	"github.com/bamiaux/rez"
+	"golang.org/x/image/draw"
+
 	"github.com/lucasb-eyer/go-colorful"
 )
 
@@ -28,7 +29,7 @@ type Visualizer struct {
 	displayConfigs [][]DisplayConfig
 
 	displays []Display
-	scaler   map[int]rez.Converter
+	scaler   map[int]draw.Scaler
 }
 
 type DisplayConfig struct {
@@ -151,7 +152,7 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 		return err
 	}
 
-	v.scaler = make(map[int]rez.Converter)
+	v.scaler = make(map[int]draw.Scaler)
 
 	for _, cfg := range displayConfigs {
 		for _, seg := range cfg.Segments {
@@ -172,30 +173,21 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 			}
 
 			//v.scaler[seg.Id] = draw.ApproxBiLinear
-			//v.scaler[seg.Id] = draw.BiLinear.NewScaler(width, height, cfg.Width, cfg.Height)
+			v.scaler[seg.Id] = draw.BiLinear.NewScaler(width, height, cfg.Width, cfg.Height)
 
-			i1 := image.NewRGBA(image.Rect(0, 0, width, height))
-			i2 := image.NewRGBA(rect)
-			//convertCfg, err := rez.PrepareConversion(&image.RGBA{
-			//	Pix:    nil,
-			//	Stride: width * 4,
-			//	Rect:   image.Rect(0, 0, width, height),
-			//}, &image.RGBA{
-			//	Pix:    nil,
-			//	Stride: rect.Dx() * 4,
-			//	Rect:   rect,
-			//})
-			convertCfg, err := rez.PrepareConversion(i1, i2)
-			if err != nil {
-				panic(err)
-			}
-
-			converter, err := rez.NewConverter(convertCfg, rez.NewBicubicFilter())
-			if err != nil {
-				panic(err)
-			}
-
-			v.scaler[seg.Id] = converter
+			//i1 := image.NewRGBA(image.Rect(0, 0, width, height))
+			//i2 := image.NewRGBA(rect)
+			//
+			//convertCfg, err := rez.PrepareConversion(i1, i2)
+			//if err != nil {
+			//	panic(err)
+			//}
+			//
+			//converter, err := rez.NewConverter(convertCfg, rez.NewBicubicFilter())
+			//if err != nil {
+			//	panic(err)
+			//}
+			//v.scaler[seg.Id] = converter
 
 		}
 	}
@@ -276,6 +268,9 @@ var saved = false
 
 func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 	now := time.Now()
+	if len(cfg.Segments) == 0 {
+		return
+	}
 	//fmt.Println("process:", d.Id())
 	//fmt.Println(d)
 	//fmt.Println(cfg)
@@ -341,12 +336,22 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 				dst = image.NewRGBA(image.Rect(0, 0, 2, seg.Leds))
 			}
 
-			//v.scaler[d.Id()].Scale(dst, dst.Bounds(), sub, sub.Bounds(), draw.Over, nil)
+			v.scaler[d.Id()].Scale(dst, dst.Bounds(), sub, sub.Bounds(), draw.Over, nil)
 
-			err := v.scaler[d.Id()].Convert(dst, sub)
-			if err != nil {
-				panic(err)
-			}
+			//err := v.scaler[d.Id()].Convert(dst, sub)
+			//if err != nil {
+			//	panic(err)
+			//}
+
+			//if rect.Dx() > rect.Dy() {
+			//	// horizontal, keep first row
+			//	rect := image.Rect(0, 0, seg.Leds, 1)
+			//	dst = src.SubImage(rect).(*image.RGBA)
+			//} else {
+			//	// vertical, keeping alternating pixels
+			//	rect := image.Rect(0, 0, 1, seg.Leds)
+			//	dst = src.SubImage(rect).(*image.RGBA)
+			//}
 
 			colors := []color.Color{}
 
