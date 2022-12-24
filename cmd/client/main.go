@@ -48,8 +48,8 @@ func main() {
 
 		tray.AddSeparator()
 
-		videoMode := tray.AddMenuItem("Ambilight - Video", "")
-		audioMode := tray.AddMenuItem("Ambilight - Audio", "")
+		videoMode := tray.AddMenuItem("Ambilight", "")
+		audioMode := tray.AddMenuItem("Audio Visualizer", "")
 
 		tray.AddSeparator()
 
