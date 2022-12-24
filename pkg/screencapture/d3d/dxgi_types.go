@@ -23,6 +23,25 @@ type _DXGI_OUTPUT_DESC struct {
 	Monitor            uint32
 }
 
+type _DXGI_SURFACE_DESC struct {
+	Width      uint32
+	Height     uint32
+	Format     uint32
+	SampleDesc _DXGI_SAMPLE_DESC
+}
+
+//type _DXGI_SAMPLE_DESC struct {
+//	Count   uint32
+//	Quality uint32
+//}
+
+//typedef struct DXGI_SURFACE_DESC {
+//UINT             Width;
+//UINT             Height;
+//DXGI_FORMAT      Format;
+//DXGI_SAMPLE_DESC SampleDesc;
+//} DXGI_SURFACE_DESC;
+
 type _DXGI_OUTDUPL_DESC struct {
 	ModeDesc                   _DXGI_MODE_DESC
 	Rotation                   uint32 // DXGI_MODE_ROTATION

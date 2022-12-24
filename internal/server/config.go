@@ -2,7 +2,6 @@ package application
 
 import (
 	"errors"
-	"fmt"
 
 	"ledctl3/internal/pkg/strip"
 	"ledctl3/internal/server/config"
@@ -86,7 +85,6 @@ func (a *Application) applyConfig(c config.Config) (err error) {
 
 	a.calibration = map[int]Calibration{}
 
-	fmt.Println(a.leds)
 	for _, c := range c.Calibration {
 		if c.Start > a.leds || c.End > a.leds {
 			return errors.New("calibration index out of range")

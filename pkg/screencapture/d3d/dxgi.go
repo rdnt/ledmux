@@ -121,6 +121,15 @@ func NewIDXGIOutputDuplication(device *ID3D11Device, deviceCtx *ID3D11DeviceCont
 		return nil, fmt.Errorf("failed at dxgiOutput.GetDesc. %w", HRESULT(hr))
 	}
 
+	//desc2 := _DXGI_SURFACE_DESC{}
+	//
+	//hr = dxgiOutput.GetDesc(&desc)
+	//if failed(hr) {
+	//	return nil, fmt.Errorf("failed at dxgiOutput.GetDesc. %w", HRESULT(hr))
+	//}
+	//
+	//fmt.Println(desc)
+
 	rect := image.Rect(
 		int(desc.DesktopCoordinates.Left), int(desc.DesktopCoordinates.Top),
 		int(desc.DesktopCoordinates.Right), int(desc.DesktopCoordinates.Bottom),
@@ -142,7 +151,7 @@ func NewIDXGIOutputDuplication(device *ID3D11Device, deviceCtx *ID3D11DeviceCont
 	if failed(hr) {
 		needsSwizzle = true
 		// fancy stuff not supported :/
-		// fmt.Printf("Info: failed to use dxgiOutput5.DuplicateOutput1, falling back to dxgiOutput1.DuplicateOutput. Missing manifest with DPI awareness set to \"PerMonitorV2\"? %v\n", _DXGI_ERROR(hr))
+		fmt.Printf("Info: failed to use dxgiOutput5.DuplicateOutput1, falling back to dxgiOutput1.DuplicateOutput. Missing manifest with DPI awareness set to \"PerMonitorV2\"? %v\n", hr)
 		var dxgiOutput1 *IDXGIOutput1
 		hr = dxgiOutput.QueryInterface(iid_IDXGIOutput1, &dxgiOutput1)
 		if failed(hr) {

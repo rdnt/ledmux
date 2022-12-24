@@ -28,11 +28,17 @@ func Init(_ int, ledsCount int, _ int, _ string) (*Engine, error) {
 	// Initialize stop channel that will stop any running effect goroutines
 	stop := make(chan struct{})
 	// Return a reference to the engine instance
+
+	colors := make([]color.Color, ledsCount)
+	for i := 0; i < ledsCount; i++ {
+		colors[i] = color.RGBA{}
+	}
+
 	return &Engine{
 		wg:        &wg,
 		stop:      stop,
 		ledsCount: ledsCount,
-		leds:      make([]color.Color, ledsCount),
+		leds:      colors,
 	}, nil
 }
 

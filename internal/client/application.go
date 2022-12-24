@@ -112,7 +112,6 @@ func New(opts ...Option) (*Application, error) {
 			a.connMux.Unlock()
 
 			if conn == nil {
-				fmt.Println("no connection")
 				continue
 			}
 
@@ -169,6 +168,8 @@ func (a *Application) Start() error {
 						fmt.Println(err)
 						return
 					}
+
+					fmt.Println("connected")
 
 					a.connMux.Lock()
 					a.conn = conn

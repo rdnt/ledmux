@@ -35,6 +35,8 @@ func (c *dxgiCapturer) All() ([]video.Display, error) {
 		d.buf = image.NewNRGBA(bounds)
 
 		ds = append(ds, d)
+
+		i++
 	}
 
 	return ds, nil

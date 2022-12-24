@@ -43,7 +43,11 @@ func (d *display) Resolution() string {
 }
 
 func (d *display) Orientation() video.Orientation {
-	return video.Landscape
+	if d.width > d.height {
+		return video.Landscape
+	}
+
+	return video.Portrait
 }
 
 func (d *display) String() string {
