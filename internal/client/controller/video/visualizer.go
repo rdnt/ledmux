@@ -29,7 +29,7 @@ type Visualizer struct {
 	displayConfigs [][]DisplayConfig
 
 	displays []Display
-	scaler   map[int]draw.Scaler
+	scalers  map[int]draw.Scaler
 }
 
 type DisplayConfig struct {
@@ -77,82 +77,12 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 		return err
 	}
 
-	//_, err = func() (any, error) {
-	//	v.scaler = make(map[int]Scaler, len(v.displays))
-	//
-	//	for _, d := range v.displays {
-	//		//src := image.NewRGBA(image.Rect(0, 0, d.Width(), d.Height()))
-	//		//
-	//		//top := image.NewRGBA(image.Rect(0, 0, d.Width(), d.Height()/10))
-	//		//right := image.NewRGBA(image.Rect(d.Width()/10*9, 0, d.Width(), d.Height()))
-	//		//bottom := image.NewRGBA(image.Rect(0, d.Height()/10*9, d.Width(), d.Height()))
-	//		//left := image.NewRGBA(image.Rect(0, 0, d.Width()/10, d.Height()))
-	//
-	//		//horizontal := draw.BiLinear.NewScaler(d.Width(), 1, d.Width(), d.Height())
-	//		//vertical := draw.BiLinear.NewScaler(1, d.Height(), d.Width(), d.Height())
-	//		//
-	//		//v.scaler[d.Id()] = Scaler{
-	//		//	Horizontal: horizontal,
-	//		//	Vertical:   vertical,
-	//		//}
-	//		//top2 := image.NewRGBA(image.Rect(0, 0, d.Width(), 10))
-	//		//topCfg, err := rez.PrepareConversion(top2, top)
-	//		//if err != nil {
-	//		//	return nil, err
-	//		//}
-	//		//
-	//		//rightCfg, err := rez.PrepareConversion(right, src)
-	//		//if err != nil {
-	//		//	return nil, err
-	//		//}
-	//		//
-	//		//bottomCfg, err := rez.PrepareConversion(bottom, src)
-	//		//if err != nil {
-	//		//	return nil, err
-	//		//}
-	//		//
-	//		//leftCfg, err := rez.PrepareConversion(left, src)
-	//		//if err != nil {
-	//		//	return nil, err
-	//		//}
-	//		//
-	//		//topRez, err := rez.NewConverter(topCfg, rez.NewBilinearFilter())
-	//		//if err != nil {
-	//		//	return nil, err
-	//		//}
-	//		//
-	//		//rightRez, err := rez.NewConverter(rightCfg, rez.NewBilinearFilter())
-	//		//if err != nil {
-	//		//	return nil, err
-	//		//}
-	//		//
-	//		//bottomRez, err := rez.NewConverter(bottomCfg, rez.NewBilinearFilter())
-	//		//if err != nil {
-	//		//	return nil, err
-	//		//}
-	//		//
-	//		//leftRez, err := rez.NewConverter(leftCfg, rez.NewBilinearFilter())
-	//		//if err != nil {
-	//		//	return nil, err
-	//		//}
-	//		//
-	//		//rezs := []rez.Converter{topRez, rightRez, bottomRez, leftRez}
-	//		//
-	//		//v.resizer[d.Id()] = rezs
-	//	}
-	//
-	//	return nil, nil
-	//}()
-	//if err != nil {
-	//	return err
-	//}
-
 	displayConfigs, err := v.matchDisplays(v.displays)
 	if err != nil {
 		return err
 	}
 
-	v.scaler = make(map[int]draw.Scaler)
+	v.scalers = make(map[int]draw.Scaler)
 
 	for _, cfg := range displayConfigs {
 		for _, seg := range cfg.Segments {
@@ -172,23 +102,7 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 				height = seg.Leds
 			}
 
-			//v.scaler[seg.Id] = draw.ApproxBiLinear
-			v.scaler[seg.Id] = draw.BiLinear.NewScaler(width, height, cfg.Width, cfg.Height)
-
-			//i1 := image.NewRGBA(image.Rect(0, 0, width, height))
-			//i2 := image.NewRGBA(rect)
-			//
-			//convertCfg, err := rez.PrepareConversion(i1, i2)
-			//if err != nil {
-			//	panic(err)
-			//}
-			//
-			//converter, err := rez.NewConverter(convertCfg, rez.NewBicubicFilter())
-			//if err != nil {
-			//	panic(err)
-			//}
-			//v.scaler[seg.Id] = converter
-
+			v.scalers[seg.Id] = draw.BiLinear.NewScaler(width, height, cfg.Width, cfg.Height)
 		}
 	}
 
@@ -213,7 +127,6 @@ func (v *Visualizer) startCapture(ctx context.Context) error {
 	}
 
 	wg.Wait()
-	//time.Sleep(3 * time.Second)
 
 	return nil
 }
@@ -264,46 +177,11 @@ func (v *Visualizer) stopCapture() {
 	v.displays = nil
 }
 
-var saved = false
-
 func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 	now := time.Now()
 	if len(cfg.Segments) == 0 {
 		return
 	}
-	//fmt.Println("process:", d.Id())
-	//fmt.Println(d)
-	//fmt.Println(cfg)
-
-	//if v.resizer[d.Id()] == nil {
-	//	src := &image.NRGBA{
-	//		Pix:    pix,
-	//		Stride: d.Width() * 4,
-	//		Rect:   image.Rect(0, 0, d.Width(), d.Height()),
-	//	}
-	//
-	//	//ratio := (d.Width()*2 + d.Height()*2) / (cfg.Leds / 2)
-	//	//ratio = 90
-	//
-	//	//fmt.Println("ratio", ratio)
-	//	//fmt.Println(d.Width()/ratio, d.Height()/ratio)
-	//
-	//	dst := image.NewNRGBA(image.Rect(0, 0, cfg.HorizontalLeds, cfg.VerticalLeds))
-	//
-	//	//fmt.Println()
-	//
-	//	convertCfg, err := rez.PrepareConversion(dst, src)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//
-	//	converter, err := rez.NewConverter(convertCfg, rez.NewBilinearFilter())
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//
-	//	v.displayResizers[d.Id()] = converter
-	//}
 
 	src := &image.RGBA{
 		Pix:    pix,
@@ -312,8 +190,6 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 	}
 
 	segs := make([]visualizer.Segment, len(cfg.Segments))
-	//ratio := (d.Width() + d.Height()) / (cfg.Leds / 2)
-	//ratio = 90
 
 	var wg sync.WaitGroup
 	wg.Add(len(cfg.Segments))
@@ -330,28 +206,13 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 
 			if rect.Dx() > rect.Dy() {
 				// horizontal
-				dst = image.NewRGBA(image.Rect(0, 0, seg.Leds, 2))
+				dst = image.NewRGBA(image.Rect(0, 0, seg.Leds, 1))
 			} else {
 				// vertical
-				dst = image.NewRGBA(image.Rect(0, 0, 2, seg.Leds))
+				dst = image.NewRGBA(image.Rect(0, 0, 1, seg.Leds))
 			}
 
-			v.scaler[d.Id()].Scale(dst, dst.Bounds(), sub, sub.Bounds(), draw.Over, nil)
-
-			//err := v.scaler[d.Id()].Convert(dst, sub)
-			//if err != nil {
-			//	panic(err)
-			//}
-
-			//if rect.Dx() > rect.Dy() {
-			//	// horizontal, keep first row
-			//	rect := image.Rect(0, 0, seg.Leds, 1)
-			//	dst = src.SubImage(rect).(*image.RGBA)
-			//} else {
-			//	// vertical, keeping alternating pixels
-			//	rect := image.Rect(0, 0, 1, seg.Leds)
-			//	dst = src.SubImage(rect).(*image.RGBA)
-			//}
+			v.scalers[d.Id()].Scale(dst, dst.Bounds(), sub, sub.Bounds(), draw.Over, nil)
 
 			colors := []color.Color{}
 
@@ -384,318 +245,12 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 		Segments: segs,
 		Latency:  time.Since(now),
 	}
-	//err := v.resizer[d.Id()][0].Convert(top, srcTopCrop)
-	//if err != nil {
-	//	panic(err)
-	//}
-
-	//pix = dst.Pix
-
-	//width, height := d.Width()/ratio, d.Height()/ratio
-
-	//total := (d.Width()/ratio + d.Height()/ratio) * 2
-
-	//width, height := d.Width(), d.Height()
-	//if d.Orientation() == Portrait || d.Orientation() == PortraitFlipped {
-	//	width, height = height, width
-	//}
-
-	//func() {
-	//	if saved {
-	//		return
-	//	}
-	//
-	//	saved = true
-	//
-	//	//img := &image.NRGBA{
-	//	//	Pix:    pix,
-	//	//	Stride: width * 4,
-	//	//	Rect:   image.Rect(0, 0, width, height),
-	//	//}
-	//
-	//	f, err := os.Create("frame.png")
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
-	//
-	//	if err := png.Encode(f, top); err != nil {
-	//		f.Close()
-	//		log.Fatal(err)
-	//	}
-	//
-	//	if err := f.Close(); err != nil {
-	//		log.Fatal(err)
-	//	}
-	//}()
-
-	//out := ""
-	//for i := 0; i < len(pix); i += 4 {
-	//	if i%33*4 == 0 {
-	//		fmt.Println(out)
-	//		out = ""
-	//	}
-	//	out += color.RGB(pix[i], pix[i]+1, pix[i]+2, true).Sprintf(" ")
-	//}
-	//fmt.Println(out)
-
-	//pix = getEdges(pix, width, height)
-
-	//out := ""
-	//for i := 0; i < len(pix); i += 4 {
-	//	out += color.RGB(pix[i], pix[i]+1, pix[i]+2, true).Sprintf(" ")
-	//}
-	//fmt.Println(out)
-
-	//pix = rotatePix(pix, d.Orientation())
-	//
-	//ratioX := int(float64(d.Width()) / float64(cfg.HorizontalLeds))
-	//ratioY := int(float64(d.Height()) / float64(cfg.VerticalLeds))
-	//
-	////fmt.Println("RATIO", ratioX, ratioY)
-	//
-	//fromOffset := calculateOffset(width, height, 3, 17)
-	//toOffset := calculateOffset(width, height, 29, 17)
-
-	//size := getPixSliceSize(width, height, fromOffset, toOffset)
-	//
-	//pix = getBounds(pix, fromOffset*4, size*4)
-
-	// TODO: load from config
-	//pix = adjustWhitePoint(pix, 50, 255)
-
-	//pix = adjustWhitePoint(pix, 0, 256)
-
-	//fmt.Println("width", width, "height", height, "from", fromOffset, "size", size)
-
-	//colors := []color.Color{}
-	////
-	//for i := 0; i < len(pix); i += 4 {
-	//	clr, _ := colorful.MakeColor(color.NRGBA{
-	//		R: pix[i],
-	//		G: pix[i+1],
-	//		B: pix[i+2],
-	//		A: pix[i+3],
-	//	})
-	//
-	//	colors = append(colors, clr)
-	//}
-	//
-	//grad, err := gradient.New(colors...)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
-	//pix = []byte{}
-	//out := ""
-	//colors := make([]color.Color, cfg.Leds)
-	//for i := 0.0; i < float64(cfg.Leds); i++ {
-	//	clr := grad.GetInterpolatedColor((i + 1) / float64(cfg.Leds))
-	//	r, g, b, a := clr.RGBA()
-	//	//out += color.RGB(r, g, b, true).Sprintf(" ")
-	//
-	//	colors[int(i)] = color.RGBA{
-	//		R: uint8(r >> 8),
-	//		G: uint8(g >> 8),
-	//		B: uint8(b >> 8),
-	//		A: uint8(a >> 8),
-	//	}
-	//}
-	//fmt.Println(out)
-
-	//fmt.Println("LENPIX", len(pix), d)
-	//pix = averagePix(pix, cfg.Leds)
-
-	//for i := 0; i < len(pix); i += 4 {
-	//	colors[i/4] = color.RGBA{
-	//		R: pix[i],
-	//		G: pix[i+1],
-	//		B: pix[i+2],
-	//		A: pix[i+3],
-	//	}
-	//}
-
-	//v.events <- visualizer.UpdateEvent{
-	//	Segments: []visualizer.Segment{
-	//		{
-	//			Id:  0, // TODO
-	//			Pix: colors,
-	//		},
-	//	},
-	//	Latency: time.Since(now),
-	//}
 }
 
 func reverse[S ~[]E, E any](s S) {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
 	}
-}
-
-func getPixSliceSize(width, height, from, to int) int {
-	return (width*2 + height*2) - from + to - 1
-}
-
-func calculateOffset(width, height, x, y int) int {
-	var offset int
-	if x == 0 {
-		offset = 2*width + height + (height - y)
-	} else if x == width-1 {
-		offset = width + y
-	} else {
-		if y == 0 {
-			offset = x
-		} else if y == height-1 {
-			offset = width + height + (width - x)
-		} else {
-			return 0
-		}
-	}
-	// offset = offset % (d.Width*2 + d.Height*2)
-	return offset
-}
-
-//func rotatePix(pix []byte, orientation Orientation) []byte {
-//
-//}
-
-// adjustWhitePoint adjusts the white point for each color individually.
-func adjustWhitePoint(pix []byte, bp, wp float64) []byte {
-	for i := 0; i < len(pix); i++ {
-		pix[i] = awp(pix[i], bp, wp)
-	}
-
-	return pix
-}
-
-func awp(color byte, min, max float64) byte {
-	c := float64(color)
-	res := c/256*(max-min) + min
-	return byte(res)
-}
-
-func averagePix(src []byte, ledsCount int) []byte {
-	pixels := len(src) / 4
-	pixelsPerLed := pixels / ledsCount
-	dst := make([]byte, ledsCount*4)
-
-	for i := 0; i < ledsCount; i++ {
-		// Initialize the color values to zero
-		var r, g, b, a = 0, 0, 0, 0
-		// Loop all pixels in the current segment
-		offset := pixelsPerLed * i * 4
-		if i == ledsCount-1 {
-			// Grab the remaining n pixels
-			// They will be at most len(pix) % count
-			pixelsPerLed = pixels - (pixelsPerLed * (ledsCount - 1))
-		}
-		for j := 0; j < pixelsPerLed*4; j += 4 {
-			// Calculate the offset (based on current segment)
-			// Add the casted color integer to the last value
-			r += int(src[offset+j])
-			g += int(src[offset+j+1])
-			b += int(src[offset+j+2])
-			a += int(src[offset+j+3])
-			// r = int(data[offset + j * 3]);
-			// g = int(data[offset + j * 3 + 1]);
-			// b = int(data[offset + j * 3 + 2]);
-			// fmt.Println(offset + j)
-		}
-		// Get the average by dividing the accumulated color value with the
-		// count of the pixels in the segment
-		r = r / pixelsPerLed
-		g = g / pixelsPerLed
-		b = b / pixelsPerLed
-		a = a / pixelsPerLed
-
-		// Modify the correct bytes on the LED data
-		// Leaving the first byte untouched
-		dst[i*4] = uint8(r)
-		dst[i*4+1] = uint8(g)
-		dst[i*4+2] = uint8(b)
-		dst[i*4+3] = uint8(a)
-	}
-
-	return dst
-
-}
-
-// getBounds filters the given edge
-func getBounds(edgePix []byte, offset, size int) []byte {
-	newBounds := make([]byte, size)
-
-	for i := 0; i < size; i++ {
-		newBounds[i] = edgePix[(i+offset)%len(edgePix)]
-	}
-
-	return newBounds
-}
-
-// getEdges decodes the pixel data from the specified image, stores the
-// border pixels in four arrays, averages the borders based on the specified
-// length of the strip and returns the color data as a bytes array
-func getEdges(pix []byte, width int, height int) []byte {
-	// index from stride and coords: y*Stride + x*4
-	// Initialize new waitgroup
-	var wg sync.WaitGroup
-	wg.Add(4)
-	// Two horizontal two vertical, 4 bytes for each pixel (RGBA)
-	b := make([]byte, (width*2+height*2)*4)
-	// Create a wait group and add a goroutine for each edge
-	// Top edge
-	go func() {
-		// Once complete set as done
-		defer wg.Done()
-		// Offset is 0 for the top edge, we are going clockwise
-		// Loop all the pixels
-		copy(b[0:width*4], pix[0:width*4])
-	}()
-	// Right edge
-	go func() {
-		defer wg.Done()
-		// Offset is 4 times the width of the display,
-		// since we need 4 bytes per pixel (RGB values)
-		offset := width * 4
-		for y := 0; y < height*4; y += 4 {
-			i := y*width + (width-1)*4
-			b[offset+y] = pix[i]
-			b[offset+y+1] = pix[i+1]
-			b[offset+y+2] = pix[i+2]
-			b[offset+y+3] = pix[i+3]
-		}
-	}()
-
-	// TODO: Bottom edge
-
-	go func() {
-		defer wg.Done()
-
-		offset := (width + height) * 4
-
-		for x := 0; x < width*4; x += 4 {
-			i := (width*(height)-1)*4 - x
-
-			b[offset+x] = pix[i]
-			b[offset+x+1] = pix[i+1]
-			b[offset+x+2] = pix[i+2]
-			b[offset+x+3] = pix[i+3]
-		}
-	}()
-	// Left edge
-	go func() {
-		defer wg.Done()
-		offset := (width*2 + height) * 4
-		for y := 0; y < height*4; y += 4 {
-			i := (height*4 - y - 4) * width
-			b[offset+y] = pix[i]
-			b[offset+y+1] = pix[i+1]
-			b[offset+y+2] = pix[i+2]
-			b[offset+y+3] = pix[i+3]
-		}
-	}()
-	// Wait until all routines are complete
-	wg.Wait()
-	// Return the bounding pixels
-	return b
 }
 
 func (v *Visualizer) Stop() error {

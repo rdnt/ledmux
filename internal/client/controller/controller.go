@@ -132,8 +132,6 @@ func (ctl *Controller) SetMode(mode Mode) error {
 				ctl.timing.process.Add(float64(evt.Latency.Nanoseconds()))
 				ctl.timingMux.Unlock()
 
-				//fmt.Println(evt.Latency)
-
 				events := []event.Event{}
 
 				for _, seg := range evt.Segments {
