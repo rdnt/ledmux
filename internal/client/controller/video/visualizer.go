@@ -212,7 +212,7 @@ func (v *Visualizer) process(d Display, cfg DisplayConfig, pix []byte) {
 				dst = image.NewRGBA(image.Rect(0, 0, 1, seg.Leds))
 			}
 
-			v.scalers[d.Id()].Scale(dst, dst.Bounds(), sub, sub.Bounds(), draw.Over, nil)
+			v.scalers[seg.Id].Scale(dst, dst.Bounds(), sub, sub.Bounds(), draw.Over, nil)
 
 			colors := []color.Color{}
 
