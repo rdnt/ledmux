@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	github.com/VividCortex/ewma v1.2.0
-	github.com/bamiaux/rez v0.0.0-20170731184118-29f4463c688b
 	github.com/getlantern/systray v1.2.1
 	github.com/go-ole/go-ole v1.2.6
 	github.com/gookit/color v1.5.0
@@ -19,7 +18,7 @@ require (
 	github.com/sgreben/piecewiselinear v1.1.1
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/exp v0.0.0-20221212164502-fae10dda9338
-	golang.org/x/image v0.0.0-20220302094943-723b81ca9867
+	golang.org/x/image v0.5.0
 	gonum.org/v1/gonum v0.11.0
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 )
